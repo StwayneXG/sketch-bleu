@@ -6,9 +6,14 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from . import bleu, dataflow_match, syntax_match, weighted_ngram_match
 from .utils import AVAILABLE_LANGS, get_tree_sitter_language
+import psutil
+import os
 
 PACKAGE_DIR = Path(__file__).parent
 
+import logging
+import time
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 def calc_codebleu(
     references: Union[List[str], List[List[str]]],
