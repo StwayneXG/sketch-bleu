@@ -84,7 +84,7 @@ def sentence_bleu(
 def corpus_bleu(
     list_of_references,
     hypotheses,
-    weights=(0.25, 0.25, 0.25, 0.25),
+    weights=(1, 0, 0, 0),
     smoothing_function=None,
     auto_reweigh=False,
 ):
@@ -148,7 +148,9 @@ def corpus_bleu(
     for references, hypothesis in zip(list_of_references, hypotheses):
         # For each order of ngram, calculate the numerator and
         # denominator for the corpus-level modified precision.
-        for i, _ in enumerate(weights, start=1):
+        for i, w in enumerate(weights, start=1):
+            if w == 0:
+                continue
             p_i_numerator, p_i_denominator = modified_precision(references, hypothesis, i)
             p_numerators[i] += p_i_numerator
             p_denominators[i] += p_i_denominator
@@ -185,7 +187,7 @@ def corpus_bleu(
     #       it tries to retain the Fraction object as much as the
     #       smoothing method allows.
     p_n = smoothing_function(p_n, references=references, hypothesis=hypothesis, hyp_len=hyp_lengths)
-    s = (w_i * math.log(p_i[0] / p_i[1]) for w_i, p_i in zip(weights, p_n))
+    s = (w_i * math.log(p_i[0] / p_i[1]) for w_i, p_i in zip(weights, p_n) if w_i != 0)
     s = bp * math.exp(math.fsum(s))
     return s
 
@@ -372,13 +374,14 @@ def brevity_penalty(closest_ref_len, hyp_len):
     :return: BLEU's brevity penalty.
     :rtype: float
     """
-    if hyp_len > closest_ref_len:
+    if 2 * hyp_len > closest_ref_len:
         return 1
     # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
     elif hyp_len == 0:
         return 0
     else:
-        return math.exp(1 - closest_ref_len / hyp_len)
+        # return math.exp(1 - closest_ref_len / hyp_len)
+        return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
 
 
 class SmoothingFunction:

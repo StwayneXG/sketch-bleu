@@ -88,7 +88,7 @@ def sentence_bleu(
 def corpus_bleu(
     list_of_references,
     hypotheses,
-    weights=(0.25, 0.25, 0.25, 0.25),
+    weights=(1, 0, 0, 0),
     smoothing_function=None,
     auto_reweigh=False,
 ):
@@ -152,14 +152,16 @@ def corpus_bleu(
     for references, hypothesis in zip(list_of_references, hypotheses):
         # For each order of ngram, calculate the numerator and
         # denominator for the corpus-level modified precision.
-        for i, _ in enumerate(weights, start=1):
-            p_i_numerator, p_i_denominator = modified_recall(references, hypothesis, i)
+        for i, w in enumerate(weights, start=1):
+            if w == 0:
+                continue
+            p_i_numerator, p_i_denominator = modified_precision(references, hypothesis, i)
             p_numerators[i] += p_i_numerator
             p_denominators[i] += p_i_denominator
 
         # Calculate the hypothesis length and the closest reference length.
         # Adds them to the corpus-level hypothesis and reference counts.
-        hyp_len = len(hypothesis)
+        hyp_len = len(hypothesis[0])
         hyp_lengths += hyp_len
         ref_lengths += closest_ref_length(references, hyp_len)
 
@@ -189,7 +191,7 @@ def corpus_bleu(
     #       it tries to retain the Fraction object as much as the
     #       smoothing method allows.
     p_n = smoothing_function(p_n, references=references, hypothesis=hypothesis, hyp_len=hyp_lengths)
-    s = (w_i * math.log(p_i[0] / p_i[1]) for w_i, p_i in zip(weights, p_n))
+    s = (w_i * math.log(p_i[0] / p_i[1]) for w_i, p_i in zip(weights, p_n) if w_i != 0)
     s = bp * math.exp(math.fsum(s))
     return s
 
@@ -250,6 +252,62 @@ def modified_recall(references, hypothesis, n):
     # return Fraction(numerator, denominator, _normalize=False)
     return numerator, denominator
 
+def modified_precision(references, hypothesis, n):
+    """
+    Calculate modified ngram recall.
+    :param references: A list of reference translations.
+    :type references: list(list(str))
+    :param hypothesis: A hypothesis translation.
+    :type hypothesis: list(str)
+    :param n: The ngram order.
+    :type n: int
+    :return: BLEU's modified precision for the nth order ngram.
+    :rtype: Fraction
+    """
+    # Extracts all ngrams in hypothesis
+    # Set an empty Counter if hypothesis is empty.
+    numerator = 0
+    denominator = 0
+
+    weights = hypothesis[1]
+    hypothesis = hypothesis[0]
+    counts = Counter(ngrams(hypothesis, n)) if len(hypothesis) >= n else Counter()
+    # Extract a union of references' counts.
+    # max_counts = reduce(or_, [Counter(ngrams(ref, n)) for ref in references])
+    for reference_and_weights in references:
+        reference = reference_and_weights[0]
+        reference_counts = Counter(ngrams(reference, n)) if len(reference) >= n else Counter()
+        # for ngram in reference_counts:
+        #     max_counts[ngram] = max(max_counts.get(ngram, 0), counts[ngram])
+        clipped_counts = {ngram: min(count, reference_counts[ngram]) for ngram, count in counts.items()}
+        # reweight
+        if n == 1 and len(weights) == len(counts):
+
+            def weighted_sum(weights, counts):
+                sum_counts = 0
+                for ngram, count in counts.items():
+                    sum_counts += count * (weights[ngram[0]] if ngram[0] in weights else 1)
+                return sum_counts
+
+            numerator += weighted_sum(weights, clipped_counts)
+            denominator += max(1, weighted_sum(weights, counts))
+
+        else:
+            numerator += sum(clipped_counts.values())
+            denominator += max(1, sum(reference_counts.values()))
+
+        # # Assigns the intersection between hypothesis and references' counts.
+        # clipped_counts = {
+        #     ngram: min(count, max_counts[ngram]) for ngram, count in counts.items()
+        # }
+
+        # numerator += sum(clipped_counts.values())
+        # # Ensures that denominator is minimum 1 to avoid ZeroDivisionError.
+        # # Usually this happens when the ngram order is > len(reference).
+        # denominator += max(1, sum(counts.values()))
+
+    # return Fraction(numerator, denominator, _normalize=False)
+    return numerator, denominator
 
 def closest_ref_length(references, hyp_len):
     """
@@ -263,7 +321,7 @@ def closest_ref_length(references, hyp_len):
     :return: The length of the reference that's closest to the hypothesis.
     :rtype: int
     """
-    ref_lens = (len(reference) for reference in references)
+    ref_lens = (len(reference[0]) for reference in references)
     closest_ref_len = min(ref_lens, key=lambda ref_len: (abs(ref_len - hyp_len), ref_len))
     return closest_ref_len
 
@@ -338,14 +396,14 @@ def brevity_penalty(closest_ref_len, hyp_len):
     :return: BLEU's brevity penalty.
     :rtype: float
     """
-    if hyp_len > closest_ref_len:
+    if 2 * hyp_len > closest_ref_len:
         return 1
     # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
     elif hyp_len == 0:
         return 0
     else:
-        return math.exp(1 - closest_ref_len / hyp_len)
-
+        # return math.exp(1 - closest_ref_len / hyp_len)
+        return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
 
 class SmoothingFunction:
     """
