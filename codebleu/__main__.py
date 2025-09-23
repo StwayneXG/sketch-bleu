@@ -17,13 +17,16 @@ def main(
     lang: str,
     weights: Tuple[float, float, float, float] = (0.25, 0.25, 0.25, 0.25),
 ) -> None:
+    # import time
+    # start_time = time.time()
     repo_bleu_score = calc_repobleu(
         Path(ref_repo),
         Path(hyp_repo),
         lang,
     )
-    print("RepoBLEU score: ", repo_bleu_score)
-    print()
+    print(repo_bleu_score)
+    # print("Time taken: ", time.time() - start_time)
+    # print()
 
     # pre_references = [[x.strip() for x in open(file, "r", encoding="utf-8").readlines()] for file in ref_files]
     # hypothesis = [x.strip() for x in open(hyp_file, "r", encoding="utf-8").readlines()]

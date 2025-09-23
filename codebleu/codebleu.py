@@ -115,6 +115,10 @@ def get_file_list(dir: Path, ext: str) -> List[Path]:
     file_list = []
     for root, dirs, files in os.walk(dir):
         for file in files:
+            if file == "augment_comments.py" or \
+                file == "mutate_methodnames.py" or \
+                file == "reorder_methods.py":
+                continue
             if file.endswith(ext):
                 file_list.append(os.path.join(root, file))
     return file_list
@@ -124,8 +128,19 @@ def extract_functions(source):
     try:
         code_ast = ast.parse(source)
         functions = [node for node in ast.walk(code_ast) if isinstance(node, ast.FunctionDef)]
-        function_sources = [ast.get_source_segment(source, function) for function in functions]
+
+                # Much faster than get_source_segment
+        function_sources = []
+        for func in functions:
+            try:
+                function_sources.append(ast.unparse(func))
+            except AttributeError:
+                # Fallback for Python < 3.9
+                function_sources.append(ast.get_source_segment(source, func))
+        
         return function_sources
+        # function_sources = [ast.get_source_segment(source, function) for function in functions]
+        # return function_sources
     except:
         lines = source.split("\n")
         start = 0
@@ -220,37 +235,95 @@ def calc_repobleu(
     # calculate dataflow match
     ref_functions = [extract_functions(ref) for ref in references]
     hyp_functions = [extract_functions(hyp) for hyp in predictions]
+
+    from .parser import remove_comments_and_docstrings
+    ref_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in ref_functions[0]]
+    hyp_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in hyp_functions[0]]
+
+    from tree_sitter import Parser
+    from .dataflow_match import get_data_flow, dfg_function
+    parser = Parser()
+    parser.language = tree_sitter_language
+    parser = [parser, dfg_function[lang]]
+    ref_dfgs = [get_data_flow(func, parser) for func in ref_functions_wo_comments_docstrings]
+    hyp_dfgs = [get_data_flow(func, parser) for func in hyp_functions_wo_comments_docstrings]
+
+    from .dataflow_match import normalize_dataflow
+    ref_dfgs_normalized = [normalize_dataflow(dfg) for dfg in ref_dfgs]
+    hyp_dfgs_normalized = [normalize_dataflow(dfg) for dfg in hyp_dfgs]
+
+    def compute_dataflow_similarity(ref_dfg_normalized, hyp_dfg_normalized):
+        """
+        Compute dataflow similarity between two normalized DFGs.
+        This replicates the logic from corpus_dataflow_match for a single pair.
+        """
+        ref_len = len(ref_dfg_normalized)
+        hyp_len = len(hyp_dfg_normalized)
+        
+        # Handle edge case: both empty DFGs should have similarity 1.0
+        if ref_len == 0 and hyp_len == 0:
+            return 1.0
+        
+        # If reference is empty but hypothesis is not, similarity is 0
+        if ref_len == 0:
+            return 0.0
+        
+        match_count = 0
+        total_count = ref_len
+        
+        # Create a copy of hyp_dfg to avoid modifying the original
+        hyp_dfg_copy = hyp_dfg_normalized.copy()
+        
+        for dataflow in ref_dfg_normalized:
+            if dataflow in hyp_dfg_copy:
+                match_count += 1
+                hyp_dfg_copy.remove(dataflow)  # Remove to avoid double counting
+        
+        return match_count / total_count
+
     results = []
-    for case in range(len(ref_functions)):
-        data = []
-        row = []
-        col = []
-        refs = ref_functions[case]
-        hyps = hyp_functions[case]
-        for i, ref in enumerate(refs):
-            for j, hyp in enumerate(hyps):
-                df_value = dataflow_match.corpus_dataflow_match([[ref]], [hyp], lang, tree_sitter_language=tree_sitter_language)
-                if df_value != 0:
-                    data.append(df_value)
-                    row.append(i)
-                    col.append(j)
+        
+    # Build similarity matrix using pre-computed normalized DFGs
+    data = []
+    row = []
+    col = []
+    
+    for i, ref_dfg in enumerate(ref_dfgs_normalized):
+        for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
+            df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
+            if df_value != 0:
+                data.append(df_value)
+                row.append(i)
+                col.append(j)
+    
+    # Create sparse matrix with proper dimensions
+    if len(data) > 0:
         biadjacency_matrix = csr_matrix((data, (row, col)))
+        
         row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
         dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+    else:
+        dataflow_match_score = 0
+    
+    def getBP(closest_ref_len, hyp_len):
+        if 2 * hyp_len > closest_ref_len:
+            return 1
+        # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
+        elif hyp_len == 0:
+            return 0
+        else:
+            # return math.exp(1 - closest_ref_len / hyp_len)
+            return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
 
-        def getBP(closest_ref_len, hyp_len):
-            if 2 * hyp_len > closest_ref_len:
-                return 1
-            # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
-            elif hyp_len == 0:
-                return 0
-            else:
-                # return math.exp(1 - closest_ref_len / hyp_len)
-                return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
+    bp = min(getBP(len(ref_functions[0]), len(hyp_functions[0])), getBP(len(hyp_functions[0]), len(ref_functions[0])))
 
-        bp = min(getBP(len(refs), len(hyps)), getBP(len(hyps), len(refs)))
-        results.append(dataflow_match_score / min(len(refs), len(hyps)) * bp)
-    dataflow_match_score = sum(results) / len(results)
+    # Avoid division by zero
+    if min(len(ref_functions[0]), len(hyp_functions[0])) > 0:
+        results.append(dataflow_match_score / min(len(ref_functions[0]), len(hyp_functions[0])) * bp)
+    else:
+        results.append(0)
+
+    dataflow_match_score = sum(results) / len(results) if results else 0
 
     alpha, beta, gamma, theta = weights
     repo_bleu_score = (
@@ -267,3 +340,51 @@ def calc_repobleu(
         "structure_match_score": structure_match_score,
         "dataflow_match_score": dataflow_match_score,
     }
+
+    # results = []
+    # for case in range(len(ref_functions)):
+    #     data = []
+    #     row = []
+    #     col = []
+    #     refs = ref_functions[case]
+    #     hyps = hyp_functions[case]
+    #     for i, ref in enumerate(refs):
+    #         for j, hyp in enumerate(hyps):
+    #             df_value = dataflow_match.corpus_dataflow_match([[ref]], [hyp], lang, tree_sitter_language=tree_sitter_language)
+    #             if df_value != 0:
+    #                 data.append(df_value)
+    #                 row.append(i)
+    #                 col.append(j)
+    #     biadjacency_matrix = csr_matrix((data, (row, col)))
+    #     row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
+    #     dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+
+    #     def getBP(closest_ref_len, hyp_len):
+    #         if 2 * hyp_len > closest_ref_len:
+    #             return 1
+    #         # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
+    #         elif hyp_len == 0:
+    #             return 0
+    #         else:
+    #             # return math.exp(1 - closest_ref_len / hyp_len)
+    #             return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
+
+    #     bp = min(getBP(len(refs), len(hyps)), getBP(len(hyps), len(refs)))
+    #     results.append(dataflow_match_score / min(len(refs), len(hyps)) * bp)
+    # dataflow_match_score = sum(results) / len(results)
+
+    # alpha, beta, gamma, theta = weights
+    # repo_bleu_score = (
+    #     alpha * ngram_match_score
+    #     + beta * weighted_ngram_match_score
+    #     + gamma * structure_match_score
+    #     + theta * (dataflow_match_score or 1)
+    # )
+
+    # return {
+    #     "repo_bleu": repo_bleu_score,
+    #     "ngram_match_score": ngram_match_score,
+    #     "weighted_ngram_match_score": weighted_ngram_match_score,
+    #     "structure_match_score": structure_match_score,
+    #     "dataflow_match_score": dataflow_match_score,
+    # }

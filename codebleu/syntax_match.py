@@ -103,26 +103,44 @@ class RepoTree:
         self.root = self.init_from_repo(repo_dir)
 
     def init_from_repo(self, repo_dir):
-        self.root = FileOrNode("Root")
-        for root, dirs, files in os.walk(repo_dir):
-            for file in files:
-                if file.endswith(".py"):
-                    self.root.add_child(self.init_from_file(os.path.join(root, file)))
-            for dir in dirs:
-                self.root.add_child(self.init_from_dir(os.path.join(root, dir)))
-
+        self.root = self._build_tree_recursive(repo_dir, "Root")
         return self.root
 
-    def init_from_dir(self, dir):
-        ele = FileOrNode("Directory")
-        for root, dirs, files in os.walk(dir):
-            for file in files:
-                if file.endswith(".py"):
-                    self.root.add_child(self.init_from_file(os.path.join(root, file)))
-            for dir in dirs:
-                self.root.add_child(self.init_from_dir(os.path.join(root, dir)))
+    def _build_tree_recursive(self, path, node_type):
+        node = FileOrNode(node_type)
+        
+        if os.path.isfile(path) and path.endswith(".py"):
+            # It's a Python file, parse it
+            with open(path, "r", encoding="utf8", errors="ignore") as f:
+                code = f.read()
+            code = remove_comments_and_docstrings(code, "utf8")
+            tree = self.parser.parse(bytes(code, "utf8")).root_node
+            cursor = tree.walk()
+            if cursor.goto_first_child():
+                child_nodes = []
+                child_nodes.append(FileOrNode(cursor.node))
+                while cursor.goto_next_sibling():
+                    child_nodes.append(FileOrNode(cursor.node))
+                for child_node in child_nodes:
+                    node.add_child(child_node)
+        
+        elif os.path.isdir(path):
+            # It's a directory, process its contents
+            try:
+                for item in os.listdir(path):
+                    item_path = os.path.join(path, item)
+                    if os.path.isfile(item_path) and item.endswith(".py"):
+                        file_node = self._build_tree_recursive(item_path, "File")
+                        node.add_child(file_node)
+                    elif os.path.isdir(item_path):
+                        dir_node = self._build_tree_recursive(item_path, "Directory")
+                        node.add_child(dir_node)
+            except PermissionError:
+                # Handle directories we can't access
+                pass
+        
+        return node
 
-        return ele
 
     def init_from_file(self, file):
         ele = FileOrNode("File")
@@ -133,6 +151,7 @@ class RepoTree:
         cursor = tree.walk()
         if cursor.goto_first_child():
             child_nodes = []
+            child_nodes.append(FileOrNode(cursor.node))
             while cursor.goto_next_sibling():
                 child_nodes.append(FileOrNode(cursor.node))
             for idx in range(len(child_nodes)):
