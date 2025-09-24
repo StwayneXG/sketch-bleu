@@ -134,9 +134,9 @@ def extract_functions(source):
         for idx, func in enumerate(functions):
             try:
                 func_source_code = ast.unparse(func)
-                if "def _get_xdg_cache_dir" in func_source_code:
-                    print(f"Source code from unparse for idx {idx}:\n{func_source_code}")
-                    print(f"Source code from get_source_segment for idx {idx}:\n{ast.get_source_segment(source, func)}")
+                # if "def _get_xdg_cache_dir" in func_source_code:
+                #     print(f"Source code from unparse for idx {idx}:\n{func_source_code}")
+                #     print(f"Source code from get_source_segment for idx {idx}:\n{ast.get_source_segment(source, func)}")
                 function_sources.append(ast.unparse(func))
             except AttributeError:
                 # Fallback for Python < 3.9
