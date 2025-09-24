@@ -11,6 +11,7 @@ def remove_comments_and_docstrings(source, lang):
         """
         Returns 'source' minus comments and docstrings.
         """
+        original_source = source
         io_obj = StringIO(source)
         out = ""
         prev_toktype = tokenize.INDENT
@@ -43,7 +44,7 @@ def remove_comments_and_docstrings(source, lang):
                 last_col = end_col
                 last_lineno = end_line
         except Exception:
-            print("tokenize error for this code:\n", source)
+            print("tokenize error for this code:\n", original_source)
             raise
         temp = []
         for x in out.split("\n"):
