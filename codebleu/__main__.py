@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 from typing import List, Tuple
 
-from . import calc_codebleu, calc_repobleu
+from codebleu import calc_codebleu, calc_repobleu
 
 PACKAGE_DIR = Path(__file__).parent
 
@@ -17,9 +17,9 @@ def main(
     lang: str,
     weights: Tuple[float, float, float, float] = (0.25, 0.25, 0.25, 0.25),
 ) -> None:
-    print("Main function executed successfully.")
     # import time
     # start_time = time.time()
+    print(f"Calculating CodeBLEU for {lang}...")
     # repo_bleu_score = calc_repobleu(
     #     Path(ref_repo),
     #     Path(hyp_repo),

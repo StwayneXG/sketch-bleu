@@ -4,8 +4,8 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from . import bleu, dataflow_match, syntax_match, weighted_ngram_match
-from .utils import AVAILABLE_LANGS, get_tree_sitter_language
+import bleu, dataflow_match, syntax_match, weighted_ngram_match
+from utils import AVAILABLE_LANGS, get_tree_sitter_language
 
 PACKAGE_DIR = Path(__file__).parent
 
@@ -191,142 +191,138 @@ def calc_repobleu(
     predictions = []
     assert reference_repo.exists(), f"reference_repo {reference_repo} does not exist"
     assert prediction_repo.exists(), f"prediction_repo {prediction_repo} does not exist"
-    # reference_files = get_file_list(reference_repo, ".py")
-    # prediction_files = get_file_list(prediction_repo, ".py")
+    reference_files = get_file_list(reference_repo, ".py")
+    prediction_files = get_file_list(prediction_repo, ".py")
 
-    # reference_source = stack_source_code(reference_files)
-    # prediction_source = stack_source_code(prediction_files)
+    reference_source = stack_source_code(reference_files)
+    prediction_source = stack_source_code(prediction_files)
 
-    # references.append(reference_source)
-    # predictions.append(prediction_source)
+    references.append(reference_source)
+    predictions.append(prediction_source)
 
-    # # calculate ngram match (BLEU)
-    # if tokenizer is None:
-    #     def tokenizer(s):
-    #         return s.split()
+    # calculate ngram match (BLEU)
+    if tokenizer is None:
+        def tokenizer(s):
+            return s.split()
 
-    # tokenized_hyps = [tokenizer(x) for x in predictions]
-    # tokenized_refs = [[tokenizer(x)] for x in references]
+    tokenized_hyps = [tokenizer(x) for x in predictions]
+    tokenized_refs = [[tokenizer(x)] for x in references]
 
-    # ngram_match_score = bleu.corpus_bleu(tokenized_refs, tokenized_hyps)
+    ngram_match_score = bleu.corpus_bleu(tokenized_refs, tokenized_hyps)
 
-    # # calculate weighted ngram match
-    # with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
-    #     keywords = [x.strip() for x in f.readlines()]
+    # calculate weighted ngram match
+    with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
+        keywords = [x.strip() for x in f.readlines()]
 
-    # def make_weights(reference_tokens, key_word_list):
-    #     return {token: 1 if token in key_word_list else 0.2 for token in reference_tokens}
+    def make_weights(reference_tokens, key_word_list):
+        return {token: 1 if token in key_word_list else 0.2 for token in reference_tokens}
 
-    # tokenized_refs_with_weights = [
-    #     [[reference_tokens, make_weights(reference_tokens, keywords)] for reference_tokens in reference]
-    #     for reference in tokenized_refs
-    # ]
-    # tokenized_hyps_with_weights = [
-    #     [hypothesis_tokens, make_weights(hypothesis_tokens, keywords)] for hypothesis_tokens in tokenized_hyps
-    # ]
+    tokenized_refs_with_weights = [
+        [[reference_tokens, make_weights(reference_tokens, keywords)] for reference_tokens in reference]
+        for reference in tokenized_refs
+    ]
+    tokenized_hyps_with_weights = [
+        [hypothesis_tokens, make_weights(hypothesis_tokens, keywords)] for hypothesis_tokens in tokenized_hyps
+    ]
 
-    # weighted_ngram_match_score = weighted_ngram_match.corpus_bleu(tokenized_refs_with_weights, tokenized_hyps_with_weights)
-    ngram_match_score = 1
-    weighted_ngram_match_score = 1
+    weighted_ngram_match_score = weighted_ngram_match.corpus_bleu(tokenized_refs_with_weights, tokenized_hyps_with_weights)
+
     # calculate structure match
-    structure_match_score = 1
-    # syntax_match.repo_structure_match(
-    #     [[reference_repo]], [prediction_repo], lang, tree_sitter_language=tree_sitter_language
-    # )
+    structure_match_score = syntax_match.repo_structure_match(
+        [[reference_repo]], [prediction_repo], lang, tree_sitter_language=tree_sitter_language
+    )
 
     # calculate dataflow match
-    # ref_functions = [extract_functions(ref) for ref in references]
-    # hyp_functions = [extract_functions(hyp) for hyp in predictions]
+    ref_functions = [extract_functions(ref) for ref in references]
+    hyp_functions = [extract_functions(hyp) for hyp in predictions]
 
-    # from .parser import remove_comments_and_docstrings
-    # ref_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in ref_functions[0]]
-    # hyp_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in hyp_functions[0]]
+    from parser import remove_comments_and_docstrings
+    ref_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in ref_functions[0]]
+    hyp_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in hyp_functions[0]]
 
-    # from tree_sitter import Parser
-    # from .dataflow_match import get_data_flow, dfg_function
-    # parser = Parser()
-    # parser.language = tree_sitter_language
-    # parser = [parser, dfg_function[lang]]
-    # ref_dfgs = [get_data_flow(func, parser) for func in ref_functions_wo_comments_docstrings]
-    # hyp_dfgs = [get_data_flow(func, parser) for func in hyp_functions_wo_comments_docstrings]
+    from tree_sitter import Parser
+    from dataflow_match import get_data_flow, dfg_function
+    parser = Parser()
+    parser.language = tree_sitter_language
+    parser = [parser, dfg_function[lang]]
+    ref_dfgs = [get_data_flow(func, parser) for func in ref_functions_wo_comments_docstrings]
+    hyp_dfgs = [get_data_flow(func, parser) for func in hyp_functions_wo_comments_docstrings]
 
-    # from .dataflow_match import normalize_dataflow
-    # ref_dfgs_normalized = [normalize_dataflow(dfg) for dfg in ref_dfgs]
-    # hyp_dfgs_normalized = [normalize_dataflow(dfg) for dfg in hyp_dfgs]
+    from dataflow_match import normalize_dataflow
+    ref_dfgs_normalized = [normalize_dataflow(dfg) for dfg in ref_dfgs]
+    hyp_dfgs_normalized = [normalize_dataflow(dfg) for dfg in hyp_dfgs]
 
-    # def compute_dataflow_similarity(ref_dfg_normalized, hyp_dfg_normalized):
-    #     """
-    #     Compute dataflow similarity between two normalized DFGs.
-    #     This replicates the logic from corpus_dataflow_match for a single pair.
-    #     """
-    #     ref_len = len(ref_dfg_normalized)
-    #     hyp_len = len(hyp_dfg_normalized)
+    def compute_dataflow_similarity(ref_dfg_normalized, hyp_dfg_normalized):
+        """
+        Compute dataflow similarity between two normalized DFGs.
+        This replicates the logic from corpus_dataflow_match for a single pair.
+        """
+        ref_len = len(ref_dfg_normalized)
+        hyp_len = len(hyp_dfg_normalized)
         
-    #     # Handle edge case: both empty DFGs should have similarity 1.0
-    #     if ref_len == 0 and hyp_len == 0:
-    #         return 1.0
+        # Handle edge case: both empty DFGs should have similarity 1.0
+        if ref_len == 0 and hyp_len == 0:
+            return 1.0
         
-    #     # If reference is empty but hypothesis is not, similarity is 0
-    #     if ref_len == 0:
-    #         return 0.0
+        # If reference is empty but hypothesis is not, similarity is 0
+        if ref_len == 0:
+            return 0.0
         
-    #     match_count = 0
-    #     total_count = ref_len
+        match_count = 0
+        total_count = ref_len
         
-    #     # Create a copy of hyp_dfg to avoid modifying the original
-    #     hyp_dfg_copy = hyp_dfg_normalized.copy()
+        # Create a copy of hyp_dfg to avoid modifying the original
+        hyp_dfg_copy = hyp_dfg_normalized.copy()
         
-    #     for dataflow in ref_dfg_normalized:
-    #         if dataflow in hyp_dfg_copy:
-    #             match_count += 1
-    #             hyp_dfg_copy.remove(dataflow)  # Remove to avoid double counting
+        for dataflow in ref_dfg_normalized:
+            if dataflow in hyp_dfg_copy:
+                match_count += 1
+                hyp_dfg_copy.remove(dataflow)  # Remove to avoid double counting
         
-    #     return match_count / total_count
+        return match_count / total_count
 
-    # results = []
-        
-    # # Build similarity matrix using pre-computed normalized DFGs
-    # data = []
-    # row = []
-    # col = []
+    results = []
+    # Build similarity matrix using pre-computed normalized DFGs
+    data = []
+    row = []
+    col = []
     
-    # for i, ref_dfg in enumerate(ref_dfgs_normalized):
-    #     for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
-    #         df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
-    #         if df_value != 0:
-    #             data.append(df_value)
-    #             row.append(i)
-    #             col.append(j)
+    for i, ref_dfg in enumerate(ref_dfgs_normalized):
+        for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
+            df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
+            if df_value != 0:
+                data.append(df_value)
+                row.append(i)
+                col.append(j)
     
-    # # Create sparse matrix with proper dimensions
-    # if len(data) > 0:
-    #     biadjacency_matrix = csr_matrix((data, (row, col)))
-        
-    #     row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
-    #     dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
-    # else:
-    #     dataflow_match_score = 0
+    # Create sparse matrix with proper dimensions
+    if len(data) > 0:
+        biadjacency_matrix = csr_matrix((data, (row, col)))
+        row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
+        dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+    else:
+        dataflow_match_score = 0
     
-    # def getBP(closest_ref_len, hyp_len):
-    #     if 2 * hyp_len > closest_ref_len:
-    #         return 1
-    #     # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
-    #     elif hyp_len == 0:
-    #         return 0
-    #     else:
-    #         # return math.exp(1 - closest_ref_len / hyp_len)
-    #         return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
+    def getBP(closest_ref_len, hyp_len):
+        if 2 * hyp_len > closest_ref_len:
+            return 1
+        # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
+        elif hyp_len == 0:
+            return 0
+        else:
+            # return math.exp(1 - closest_ref_len / hyp_len)
+            return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
 
-    # bp = min(getBP(len(ref_functions[0]), len(hyp_functions[0])), getBP(len(hyp_functions[0]), len(ref_functions[0])))
+    bp = min(getBP(len(ref_functions[0]), len(hyp_functions[0])), getBP(len(hyp_functions[0]), len(ref_functions[0])))
 
-    # # Avoid division by zero
-    # if min(len(ref_functions[0]), len(hyp_functions[0])) > 0:
-    #     results.append(dataflow_match_score / min(len(ref_functions[0]), len(hyp_functions[0])) * bp)
-    # else:
-    #     results.append(0)
+    # Avoid division by zero
+    if min(len(ref_functions[0]), len(hyp_functions[0])) > 0:
+        results.append(dataflow_match_score / min(len(ref_functions[0]), len(hyp_functions[0])) * bp)
+    else:
+        results.append(0)
 
-    # dataflow_match_score = sum(results) / len(results) if results else 0
-    dataflow_match_score = 1
+    dataflow_match_score = sum(results) / len(results) if results else 0
+
     alpha, beta, gamma, theta = weights
     repo_bleu_score = (
         alpha * ngram_match_score
