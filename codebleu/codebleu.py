@@ -236,12 +236,28 @@ def calc_repobleu(
     )
 
     # calculate dataflow match
-    ref_functions = [extract_functions(ref) for ref in references]
-    hyp_functions = [extract_functions(hyp) for hyp in predictions]
+    ref_functions = []
+    for idx, ref in enumerate(references):
+        ref_functions += extract_functions(ref)
+    hyp_functions = []
+    for idx, hyp in enumerate(predictions):
+        hyp_functions += extract_functions(hyp)
+    # ref_functions = [extract_functions(ref) for ref in references]
+    # hyp_functions = [extract_functions(hyp) for hyp in predictions]
 
     from parser import remove_comments_and_docstrings
-    ref_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in ref_functions[0]]
-    hyp_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in hyp_functions[0]]
+    ref_functions_wo_comments_docstrings = []
+    hyp_functions_wo_comments_docstrings = []
+    for idx, func in enumerate(ref_functions):
+        try:
+            ref_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+        except Exception:
+            print(f"Error processing reference function {idx}:\n{func}")
+            raise
+    for idx, func in enumerate(hyp_functions):
+        hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+    # ref_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in ref_functions]
+    # hyp_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in hyp_functions]
 
     from tree_sitter import Parser
     from dataflow_match import get_data_flow, dfg_function
