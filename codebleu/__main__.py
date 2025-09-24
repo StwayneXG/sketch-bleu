@@ -19,13 +19,12 @@ def main(
 ) -> None:
     # import time
     # start_time = time.time()
-    print(f"Calculating CodeBLEU for {lang}...")
-    # repo_bleu_score = calc_repobleu(
-    #     Path(ref_repo),
-    #     Path(hyp_repo),
-    #     lang,
-    # )
-    # print(repo_bleu_score)
+    repo_bleu_score = calc_repobleu(
+        Path(ref_repo),
+        Path(hyp_repo),
+        lang,
+    )
+    print(repo_bleu_score)
     # print("Time taken: ", time.time() - start_time)
     # print()
 
