@@ -17,14 +17,15 @@ def main(
     lang: str,
     weights: Tuple[float, float, float, float] = (0.25, 0.25, 0.25, 0.25),
 ) -> None:
+    print("Main function executed successfully.")
     # import time
     # start_time = time.time()
-    repo_bleu_score = calc_repobleu(
-        Path(ref_repo),
-        Path(hyp_repo),
-        lang,
-    )
-    print(repo_bleu_score)
+    # repo_bleu_score = calc_repobleu(
+    #     Path(ref_repo),
+    #     Path(hyp_repo),
+    #     lang,
+    # )
+    # print(repo_bleu_score)
     # print("Time taken: ", time.time() - start_time)
     # print()
 
