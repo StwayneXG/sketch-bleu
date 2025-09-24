@@ -146,6 +146,8 @@ def extract_functions(source):
         # return function_sources
     except:
         print("Failed to parse with ast, falling back to regex-based extraction.")
+        # print(f"Source code that failed to parse:\n{source}")
+        raise
         lines = source.split("\n")
         start = 0
         function_sources = []
@@ -161,6 +163,10 @@ def extract_functions(source):
                     end += 1
             start += 1
         return function_sources
+
+def get_file_content(file_path: Path) -> str:
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read().strip()
 
 def calc_repobleu(
     reference_repo: Path,
@@ -189,6 +195,66 @@ def calc_repobleu(
 
     # get the tree-sitter language for a given language
     tree_sitter_language = get_tree_sitter_language(lang)
+
+    # Systematic workflow
+
+    # 1. Assert repos exist
+    assert reference_repo.exists(), f"reference_repo {reference_repo} does not exist"
+    assert prediction_repo.exists(), f"prediction_repo {prediction_repo} does not exist"
+
+    # 2. Get list of files with the given extension
+    reference_files = get_file_list(reference_repo, ".py")
+    prediction_files = get_file_list(prediction_repo, ".py")
+
+    # 3. Get source code from the files in a list
+    reference_sources = []
+    for file in reference_files:
+        reference_sources.append(get_file_content(file))
+    prediction_sources = []
+    for file in prediction_files:
+        prediction_sources.append(get_file_content(file))
+
+    # 4. Stack source code into a single string
+    reference_source = "\n".join(reference_sources)
+    prediction_source = "\n".join(prediction_sources)
+
+    # 5. Get functions from each file content
+    ref_functions = []
+    for idx, ref in enumerate(reference_sources):
+        try:
+            ref_functions += extract_functions(ref)
+        except Exception:
+            print(f"Error processing reference file {reference_files[idx]}:\n{ref}")
+            raise
+
+    hyp_functions = []
+    for idx, hyp in enumerate(prediction_sources):
+        try:
+            hyp_functions += extract_functions(hyp)
+        except Exception:
+            print(f"Error processing hypothesis file {prediction_files[idx]}:\n{hyp}")
+            raise
+
+    # 6. Remove comments and docstrings from each function
+    from parser import remove_comments_and_docstrings
+    ref_functions_wo_comments_docstrings = []
+    hyp_functions_wo_comments_docstrings = []
+    for idx, func in enumerate(ref_functions):
+        try:
+            ref_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+        except Exception:
+            print(f"Error processing reference function {idx}:\n{func}")
+            raise
+    for idx, func in enumerate(hyp_functions):
+        try:
+            hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+        except Exception:
+            print(f"Error processing hypothesis function {idx}:\n{func}")
+            raise
+    raise
+    # 7. Get dataflow from each function
+    # 8. Calculate scores
+
 
     # preprocess inputs
     references = []
