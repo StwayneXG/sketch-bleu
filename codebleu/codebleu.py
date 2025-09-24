@@ -255,7 +255,11 @@ def calc_repobleu(
             print(f"Error processing reference function {idx}:\n{func}")
             raise
     for idx, func in enumerate(hyp_functions):
-        hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+        try:
+            hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+        except Exception:
+            print(f"Error processing hypothesis function {idx}:\n{func}")
+            raise
     # ref_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in ref_functions]
     # hyp_functions_wo_comments_docstrings = [remove_comments_and_docstrings(func, lang) for func in hyp_functions]
 
