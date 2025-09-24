@@ -124,46 +124,52 @@ def get_file_list(dir: Path, ext: str) -> List[Path]:
     return file_list
 
 
+import ast  # Python 3
+import typed_ast.ast27 as ast27
+
+
 def extract_functions(source):
-    try:
-        code_ast = ast.parse(source)
-        functions = [node for node in ast.walk(code_ast) if isinstance(node, ast.FunctionDef)]
+    lines = source.splitlines()
 
-                # Much faster than get_source_segment
+    def extract_from_tree(tree, is_py3=True):
+        node_type = ast.FunctionDef if is_py3 else ast27.FunctionDef
+        functions = [node for node in ast.walk(tree) if isinstance(node, node_type)]
+
         function_sources = []
-        for idx, func in enumerate(functions):
-            try:
-                func_source_code = ast.unparse(func)
-                # if "def _get_xdg_cache_dir" in func_source_code:
-                #     print(f"Source code from unparse for idx {idx}:\n{func_source_code}")
-                #     print(f"Source code from get_source_segment for idx {idx}:\n{ast.get_source_segment(source, func)}")
-                function_sources.append(ast.unparse(func))
-            except AttributeError:
-                # Fallback for Python < 3.9
-                function_sources.append(ast.get_source_segment(source, func))
-        return function_sources
-        # function_sources = [ast.get_source_segment(source, function) for function in functions]
-        # return function_sources
-    except:
-        print("Failed to parse with ast, falling back to regex-based extraction.")
-        # print(f"Source code that failed to parse:\n{source}")
-        raise
-        lines = source.split("\n")
-        start = 0
-        function_sources = []
-        while start < len(lines):
-            line = lines[start]
-            if line.startswith("def "):
-                end = start + 1
-                while True:
-                    if not lines[end].startswith(" ") and not lines[end].startswith("\t"):
-                        function_sources.append("\n".join(lines[start:end]))
-                        start = end
-                        break
+        for func in functions:
+            start = func.lineno - 1
+            indent = len(lines[start]) - len(lines[start].lstrip())
+
+            end = start + 1
+            while end < len(lines):
+                line = lines[end]
+                if line.strip() == "":
                     end += 1
-            start += 1
+                    continue
+                curr_indent = len(line) - len(line.lstrip())
+                if curr_indent <= indent:
+                    break
+                end += 1
+
+            func_lines = lines[start:end]
+            function_sources.append("\n".join(func_lines))
+
         return function_sources
 
+    try:
+        # Try Python 3 AST first
+        code_ast = ast.parse(source)
+        return extract_from_tree(code_ast, is_py3=True)
+
+    except SyntaxError as e:
+        print("Python 3 AST parsing failed, trying Python 2 fallback.")
+        try:
+            code_ast = ast27.parse(source)
+            return extract_from_tree(code_ast, is_py3=False)
+        except Exception as e:
+            print("typed_ast (Python 2) parsing also failed:", e)
+            return []
+        
 def get_file_content(file_path: Path) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read().strip()
