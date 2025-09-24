@@ -99,3 +99,81 @@ def calc_codebleu(
         "syntax_match_score": syntax_match_score,
         "dataflow_match_score": dataflow_match_score,
     }
+
+import os
+import ast
+import math
+from scipy.sparse import csr_matrix
+from scipy.optimize import linear_sum_assignment
+import ast
+
+def stack_source_code(file_list: List[Path]) -> str:
+    source_code = ""
+    for file in file_list:
+        with open(file, "r", encoding="utf-8") as f:
+            source_code += f.read().strip() + "\n"
+
+    return source_code
+
+def get_file_list(dir: Path, ext: str) -> List[Path]:
+    SPECIAL_FILEPATHS = ["augment_comments.py", "mutate_methodnames.py", "reorder_methods.py"]
+    file_list = []
+    for root, dirs, files in os.walk(dir):
+        for file in files:
+            if file in SPECIAL_FILEPATHS:
+                continue
+            if file.endswith(ext):
+                file_list.append(os.path.join(root, file))
+    return file_list
+
+def get_file_content(file_path: Path) -> str:
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+        file_content = f.read().strip()
+    return file_content
+
+def get_repo_files(reference_repo: Path, prediction_repo: Path, ext: str = ".py") -> Tuple[List[Path], List[Path]]:
+    start_time = time.time()
+    
+    reference_files = get_file_list(reference_repo, ext)
+    prediction_files = get_file_list(prediction_repo, ext)
+
+    logging.debug(f"Number of reference files: {len(reference_files)}")
+    logging.debug(f"Number of prediction files: {len(prediction_files)}")
+    logging.debug(f"Time taken to get file lists: {(time.time() - start_time):.2f} seconds")
+    return reference_files, prediction_files
+
+def get_repo_source_codes(reference_files: List[Path], prediction_files: List[Path]) -> Tuple[List[str], List[str]]:
+    start_time = time.time()
+    
+    reference_sources = []
+    for file in reference_files:
+        reference_sources.append(get_file_content(file))
+    prediction_sources = []
+    for file in prediction_files:
+        prediction_sources.append(get_file_content(file))
+    
+    logging.debug(f"Time taken to get file contents: {(time.time() - start_time):.2f} seconds")
+    return reference_sources, prediction_sources
+
+def stack_repo_source_codes(reference_sources: List[str], prediction_sources: List[str]) -> Tuple[str, str]:
+    start_time = time.time()
+
+    reference_source = "\n".join(reference_sources)
+    prediction_source = "\n".join(prediction_sources)
+
+    logging.debug(f"Time taken to stack file contents: {(time.time() - start_time):.2f} seconds")
+    return reference_source, prediction_source
+
+def tokenize_repo_source_codes(reference_source: str, prediction_source: str, tokenizer: Callable) -> Tuple[List[str], List[str]]:
+    start_time = time.time()
+
+    if tokenizer is None:
+        def tokenizer(s):
+            return s.split()
+
+    tokenized_refs = tokenizer(reference_source)
+    tokenized_hyps = tokenizer(prediction_source)
+
+    logging.debug(f"Time taken to tokenize source codes: {(time.time() - start_time):.2f} seconds")
+    return tokenized_refs, tokenized_hyps
+
