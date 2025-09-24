@@ -145,6 +145,7 @@ def extract_functions(source):
         # function_sources = [ast.get_source_segment(source, function) for function in functions]
         # return function_sources
     except:
+        print("Failed to parse with ast, falling back to regex-based extraction.")
         lines = source.split("\n")
         start = 0
         function_sources = []
