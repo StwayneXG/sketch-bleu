@@ -126,6 +126,54 @@ def get_file_list(dir: Path, ext: str) -> List[Path]:
                 file_list.append(os.path.join(root, file))
     return file_list
 
+def extract_functions(source):
+    lines = source.splitlines()
+
+    # Try Python 3 first
+    try:
+        tree = ast.parse(source)
+        node_type = ast.FunctionDef
+    except SyntaxError:
+        # Fallback to Python 2
+        try:
+            import typed_ast.ast27 as ast27
+            tree = ast27.parse(source)
+            node_type = ast27.FunctionDef
+        except:
+            return []
+    
+    functions = [node for node in ast.walk(tree) if isinstance(node, node_type)]
+    
+    result = []
+    for func in functions:
+        # Try ast.unparse first (Python 3.9+)
+        if hasattr(ast, 'unparse'):
+            try:
+                result.append(ast.unparse(func))
+                continue
+            except:
+                pass
+        
+        # Fallback: extract by line numbers
+        start = func.lineno - 1
+        base_indent = len(lines[start]) - len(lines[start].lstrip())
+        
+        end = start + 1
+        while end < len(lines):
+            line = lines[end]
+            # Skip empty lines - they don't determine function boundaries
+            if line.strip() == "":
+                end += 1
+                continue
+            # Only stop if we find a non-empty line with less/equal indentation
+            if len(line) - len(line.lstrip()) <= base_indent:
+                break
+            end += 1
+        
+        result.append('\n'.join(lines[start:end]))
+    
+    return result
+
 def get_file_content(file_path: Path) -> str:
     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
         file_content = f.read().strip()
