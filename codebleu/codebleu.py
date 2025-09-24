@@ -237,9 +237,11 @@ def calc_repobleu(
 
     # calculate dataflow match
     ref_functions = []
+    print("Extracting functions from reference repository...")
     for idx, ref in enumerate(references):
         ref_functions += extract_functions(ref)
     hyp_functions = []
+    print("Extracting functions from hyp repository...")
     for idx, hyp in enumerate(predictions):
         hyp_functions += extract_functions(hyp)
     # ref_functions = [extract_functions(ref) for ref in references]
