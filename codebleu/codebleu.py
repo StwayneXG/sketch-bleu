@@ -131,12 +131,12 @@ def extract_functions(source):
 
                 # Much faster than get_source_segment
         function_sources = []
-        for func in functions:
+        for idx, func in enumerate(functions):
             try:
                 func_source_code = ast.unparse(func)
                 if "def _get_xdg_cache_dir" in func_source_code:
-                    print(f"Source code from unparse:\n{func_source_code}")
-                    print(f"Source code from get_source_segment:\n{ast.get_source_segment(source, func)}")
+                    print(f"Source code from unparse for idx {idx}:\n{func_source_code}")
+                    print(f"Source code from get_source_segment for idx {idx}:\n{ast.get_source_segment(source, func)}")
                 function_sources.append(ast.unparse(func))
             except AttributeError:
                 # Fallback for Python < 3.9
