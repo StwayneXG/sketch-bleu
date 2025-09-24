@@ -141,7 +141,6 @@ def extract_functions(source):
             except AttributeError:
                 # Fallback for Python < 3.9
                 function_sources.append(ast.get_source_segment(source, func))
-        print("returning without error")
         return function_sources
         # function_sources = [ast.get_source_segment(source, function) for function in functions]
         # return function_sources
