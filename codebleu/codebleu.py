@@ -271,23 +271,24 @@ def calc_repobleu(
         except Exception:
             print(f"Error processing reference function {idx}:\n{func}")
             raise
-    print(f"Time taken to remove comments and docstrings from reference functions: {time.time() - start_time} seconds")
-    # for idx, func in enumerate(hyp_functions):
-    #     try:
-    #         hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
-    #     except Exception:
-    #         print(f"Error processing hypothesis function {idx}:\n{func}")
-    #         raise
-    
-    # # 7. Calculate n gram matches
-    # if tokenizer is None:
-    #     def tokenizer(s):
-    #         return s.split()
+    for idx, func in enumerate(hyp_functions):
+        try:
+            hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+        except Exception:
+            print(f"Error processing hypothesis function {idx}:\n{func}")
+            raise
+    print(f"Removed comments and docstrings from functions in {time.time() - start_time} seconds.")
 
-    # tokenized_hyps = tokenizer(prediction_source)
-    # tokenized_refs = tokenizer(reference_source)
+    # 7. Calculate n gram matches
+    if tokenizer is None:
+        def tokenizer(s):
+            return s.split()
+    start_time = time.time()
+    tokenized_hyps = tokenizer(prediction_source)
+    tokenized_refs = tokenizer(reference_source)
+    print(f"Tokenization took {time.time() - start_time} seconds.")
     # ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
-    # ngram_match_score = 1
+    ngram_match_score = 1
     
     # # 8. Calculate weighted n gram matches
     # with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
