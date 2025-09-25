@@ -151,15 +151,15 @@ def corpus_bleu(
         for i, w in enumerate(weights, start=1):
             if w == 0:
                 continue
-            p_i_numerator, p_i_denominator = modified_precision(references, hypothesis, i)
-            p_numerators[i] += p_i_numerator
-            p_denominators[i] += p_i_denominator
+        #     p_i_numerator, p_i_denominator = modified_precision(references, hypothesis, i)
+        #     p_numerators[i] += p_i_numerator
+        #     p_denominators[i] += p_i_denominator
 
-        # Calculate the hypothesis length and the closest reference length.
-        # Adds them to the corpus-level hypothesis and reference counts.
-        hyp_len = len(hypothesis)
-        hyp_lengths += hyp_len
-        ref_lengths += closest_ref_length(references, hyp_len)
+        # # Calculate the hypothesis length and the closest reference length.
+        # # Adds them to the corpus-level hypothesis and reference counts.
+        # hyp_len = len(hypothesis)
+        # hyp_lengths += hyp_len
+        # ref_lengths += closest_ref_length(references, hyp_len)
     print(f"Hyp lengths: {hyp_lengths}, Ref lengths: {ref_lengths}")
     return 1
     # Calculate corpus-level brevity penalty.
