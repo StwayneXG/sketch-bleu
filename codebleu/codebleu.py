@@ -181,8 +181,8 @@ def extract_functions(source):
 def get_file_content(file_path: Path) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
         file_content = f.read().strip()
-    if "    def do_custom_build(self, env):" in file_content:
-        print(f"File content from {file_path}:\n{file_content}")
+    # if "    def do_custom_build(self, env):" in file_content:
+    #     print(f"File content from {file_path}:\n{file_content}")
     return file_content
 
 def calc_repobleu(
@@ -275,7 +275,7 @@ def calc_repobleu(
             return s.split()
 
     tokenized_hyps = tokenizer(prediction_source)
-    tokenized_refs = [tokenizer(reference_source)]
+    tokenized_refs = tokenizer(reference_source)
     ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
     
     # 8. Calculate weighted n gram matches
