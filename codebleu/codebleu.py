@@ -9,6 +9,9 @@ from utils import AVAILABLE_LANGS, get_tree_sitter_language
 
 PACKAGE_DIR = Path(__file__).parent
 
+import logging
+import time
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 def calc_codebleu(
     references: Union[List[str], List[List[str]]],
@@ -100,7 +103,7 @@ import ast
 import math
 from scipy.sparse import csr_matrix
 from scipy.optimize import linear_sum_assignment
-
+import ast
 
 def stack_source_code(file_list: List[Path]) -> str:
     source_code = ""
@@ -109,7 +112,6 @@ def stack_source_code(file_list: List[Path]) -> str:
             source_code += f.read().strip() + "\n"
 
     return source_code
-
 
 def get_file_list(dir: Path, ext: str) -> List[Path]:
     SPECIAL_FILEPATHS = ["augment_comments.py", "mutate_methodnames.py", "reorder_methods.py"]
@@ -122,68 +124,165 @@ def get_file_list(dir: Path, ext: str) -> List[Path]:
                 file_list.append(os.path.join(root, file))
     return file_list
 
-
-import ast
-import typed_ast.ast27 as ast27
-
 def extract_functions(source):
     lines = source.splitlines()
 
-    def extract_from_tree(tree, is_py3=True):
-        if is_py3:
-            node_type = ast.FunctionDef
-        else:
-            node_type = ast27.FunctionDef
-
-        functions = [node for node in ast.walk(tree) if isinstance(node, node_type)]
-
-        function_sources = []
-        for func in functions:
-            try:
-                # Use unparse if possible (Python 3.9+ and ast.FunctionDef)
-                if is_py3 and hasattr(ast, "unparse"):
-                    function_sources.append(ast.unparse(func))
-                    continue
-            except Exception:
-                pass
-
-            # Fallback: use line numbers
-            start = func.lineno - 1
-            indent = len(lines[start]) - len(lines[start].lstrip())
-
-            end = start + 1
-            while end < len(lines):
-                line = lines[end]
-                if line.strip() == "":
-                    end += 1
-                    continue
-                curr_indent = len(line) - len(line.lstrip())
-                if curr_indent <= indent:
-                    break
-                end += 1
-
-            func_lines = lines[start:end]
-            function_sources.append("\n".join(func_lines))
-
-        return function_sources
-
+    # Try Python 3 first
     try:
-        code_ast = ast.parse(source)
-        return extract_from_tree(code_ast, is_py3=True)
+        tree = ast.parse(source)
+        node_type = ast.FunctionDef
     except SyntaxError:
+        # Fallback to Python 2
         try:
-            code_ast = ast27.parse(source)
-            return extract_from_tree(code_ast, is_py3=False)
-        except Exception as e:
-            print("Failed to parse:", e)
+            import typed_ast.ast27 as ast27
+            tree = ast27.parse(source)
+            node_type = ast27.FunctionDef
+        except:
             return []
+    
+    functions = [node for node in ast.walk(tree) if isinstance(node, node_type)]
+    
+    result = []
+    for func in functions:
+        # Try ast.unparse first (Python 3.9+)
+        if hasattr(ast, 'unparse'):
+            try:
+                result.append(ast.unparse(func))
+                continue
+            except:
+                pass
         
+        # Fallback: extract by line numbers
+        start = func.lineno - 1
+        base_indent = len(lines[start]) - len(lines[start].lstrip())
+        
+        end = start + 1
+        while end < len(lines):
+            line = lines[end]
+            # Skip empty lines - they don't determine function boundaries
+            if line.strip() == "":
+                end += 1
+                continue
+            # Only stop if we find a non-empty line with less/equal indentation
+            if len(line) - len(line.lstrip()) <= base_indent:
+                break
+            end += 1
+        
+        result.append('\n'.join(lines[start:end]))
+    
+    return result
+
 def get_file_content(file_path: Path) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
         file_content = f.read().strip()
-    # if "    def do_custom_build(self, env):" in file_content:
-    #     print(f"File content from {file_path}:\n{file_content}")
     return file_content
+
+def get_repo_files(reference_repo: Path, prediction_repo: Path, ext: str = ".py") -> Tuple[List[Path], List[Path]]:
+    start_time = time.time()
+    
+    reference_files = get_file_list(reference_repo, ext)
+    prediction_files = get_file_list(prediction_repo, ext)
+
+    logging.debug(f"Number of reference files: {len(reference_files)}")
+    logging.debug(f"Number of prediction files: {len(prediction_files)}")
+    logging.debug(f"Time taken to get file lists: {(time.time() - start_time):.2f} seconds")
+    return reference_files, prediction_files
+
+def get_repo_source_codes(reference_files: List[Path], prediction_files: List[Path]) -> Tuple[List[str], List[str]]:
+    start_time = time.time()
+    
+    reference_sources = []
+    for file in reference_files:
+        reference_sources.append(get_file_content(file))
+    prediction_sources = []
+    for file in prediction_files:
+        prediction_sources.append(get_file_content(file))
+    
+    logging.debug(f"Time taken to get file contents: {(time.time() - start_time):.2f} seconds")
+    return reference_sources, prediction_sources
+
+def stack_repo_source_codes(reference_sources: List[str], prediction_sources: List[str]) -> Tuple[str, str]:
+    start_time = time.time()
+
+    reference_source = "\n".join(reference_sources)
+    prediction_source = "\n".join(prediction_sources)
+
+    logging.debug(f"Time taken to stack file contents: {(time.time() - start_time):.2f} seconds")
+    return reference_source, prediction_source
+
+def tokenize_repo_source_codes(reference_source: str, prediction_source: str, tokenizer: Callable) -> Tuple[List[str], List[str]]:
+    start_time = time.time()
+
+    if tokenizer is None:
+        def tokenizer(s):
+            return s.split()
+
+    tokenized_refs = tokenizer(reference_source)
+    tokenized_hyps = tokenizer(prediction_source)
+
+    logging.debug(f"Time taken to tokenize source codes: {(time.time() - start_time):.2f} seconds")
+    return tokenized_refs, tokenized_hyps
+
+def calc_ngram_match(tokenized_refs: List[str], tokenized_hyps: List[str]) -> float:
+    start_time = time.time()
+    ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
+    logging.debug(f"Time taken to calculate ngram match: {(time.time() - start_time):.2f} seconds")
+    return ngram_match_score
+
+def calc_weighted_ngram_match(tokenized_refs: List[str], tokenized_hyps: List[str], keywords_dir: Path, lang: str) -> float:
+    start_time = time.time()
+    with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
+        keywords = [x.strip() for x in f.readlines()]
+
+    def make_weights(reference_tokens, key_word_list):
+        return {token: 1 if token in key_word_list else 0.2 for token in reference_tokens}
+
+    tokenized_refs_with_weights = [tokenized_refs, make_weights(tokenized_refs, keywords)]
+    tokenized_hyps_with_weights = [tokenized_hyps, make_weights(tokenized_hyps, keywords)]
+    weighted_ngram_match_score = weighted_ngram_match.corpus_bleu([tokenized_refs_with_weights], [tokenized_hyps_with_weights])
+    
+    logging.debug(f"Time taken to calculate weighted ngram match: {(time.time() - start_time):.2f} seconds")
+    return weighted_ngram_match_score
+
+def calc_structure_match(reference_repo: Path, prediction_repo: Path, lang: str, tree_sitter_language) -> float:
+    start_time = time.time()
+    structure_match_score = syntax_match.repo_structure_match(
+        [[reference_repo]], [prediction_repo], lang, tree_sitter_language=tree_sitter_language
+    )
+    logging.debug(f"Time taken to calculate structure match: {(time.time() - start_time):.2f} seconds")
+    return structure_match_score
+
+def get_repo_functions(reference_sources: List[str], prediction_sources: List[str]) -> Tuple[List[str], List[str]]:
+    start_time = time.time()
+
+    ref_functions = []
+    for ref in reference_sources:
+        ref_functions += extract_functions(ref)
+
+
+    hyp_functions = []
+    for hyp in prediction_sources:
+        hyp_functions += extract_functions(hyp)
+
+    logging.debug(f"Extracted {len(ref_functions)} functions from reference sources.")
+    logging.debug(f"Extracted {len(hyp_functions)} functions from prediction sources.")
+    logging.debug(f"Time taken to extract functions: {(time.time() - start_time):.2f} seconds")
+    return ref_functions, hyp_functions
+
+def remove_repo_comments_and_docstrings(ref_functions: List[str], hyp_functions: List[str], lang: str) -> Tuple[List[str], List[str]]:
+    from parser import remove_comments_and_docstrings
+    start_time = time.time()
+
+    ref_functions_wo_comments_docstrings = []
+    hyp_functions_wo_comments_docstrings = []
+    for func in ref_functions:
+        ref_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+
+    for func in hyp_functions:
+        hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+    
+    logging.debug(f"Time taken to remove comments and docstrings: {(time.time() - start_time):.2f} seconds")
+    return ref_functions_wo_comments_docstrings, hyp_functions_wo_comments_docstrings
 
 def calc_repobleu(
     reference_repo: Path,
@@ -209,87 +308,41 @@ def calc_repobleu(
     assert lang in AVAILABLE_LANGS, f"Language {lang} is not supported (yet). Available languages: {AVAILABLE_LANGS}"
     assert len(weights) == 4, "weights should be a tuple of 4 floats (alpha, beta, gamma, theta)"
     assert keywords_dir.exists(), f"keywords_dir {keywords_dir} does not exist"
+    assert reference_repo.exists(), f"reference_repo {reference_repo} does not exist"
+    assert prediction_repo.exists(), f"prediction_repo {prediction_repo} does not exist"
 
     # get the tree-sitter language for a given language
     tree_sitter_language = get_tree_sitter_language(lang)
 
-    # Systematic workflow
-
-    # 1. Assert repos exist
-    assert reference_repo.exists(), f"reference_repo {reference_repo} does not exist"
-    assert prediction_repo.exists(), f"prediction_repo {prediction_repo} does not exist"
-
     # 2. Get list of files with the given extension
-    reference_files = get_file_list(reference_repo, ".py")
-    prediction_files = get_file_list(prediction_repo, ".py")
-    print(f"Number of reference files: {len(reference_files)}")
-    print(f"Number of prediction files: {len(prediction_files)}")
+    reference_files, prediction_files = get_repo_files(reference_repo, prediction_repo, ext=".py")
 
     # 3. Get source code from the files in a list
-    reference_sources = []
-    for file in reference_files:
-        reference_sources.append(get_file_content(file))
-    prediction_sources = []
-    for file in prediction_files:
-        prediction_sources.append(get_file_content(file))
+    reference_sources, prediction_sources = get_repo_source_codes(reference_files, prediction_files)
 
     # 4. Stack source code into a single string
-    reference_source = "\n".join(reference_sources)
-    prediction_source = "\n".join(prediction_sources)
+    reference_sources_stacked, prediction_sources_stacked = stack_repo_source_codes(reference_sources, prediction_sources)
 
-    print("Successfully loaded source code from both repositories and stacked it.")
+    # 5. Tokenize the stacked source code
+    tokenized_refs, tokenized_hyps = tokenize_repo_source_codes(reference_sources_stacked, prediction_sources_stacked, tokenizer)
+
+    # 6. Calculate n gram matches
+    ngram_match_score = calc_ngram_match(tokenized_refs, tokenized_hyps)
+
+    # 7. Calculate weighted n gram matches
+    weighted_ngram_match_score = calc_weighted_ngram_match(tokenized_refs, tokenized_hyps, keywords_dir, lang)
+
+    # 8. Calculate structure match
+    structure_match_score = calc_structure_match(reference_repo, prediction_repo, lang, tree_sitter_language)
 
     # 5. Get functions from each file content
-    ref_functions = []
-    for idx, ref in enumerate(reference_sources):
-        try:
-            ref_functions += extract_functions(ref)
-        except Exception:
-            print(f"Error processing reference file {reference_files[idx]}:\n{ref}")
-            raise
-
-    hyp_functions = []
-    for idx, hyp in enumerate(prediction_sources):
-        try:
-            hyp_functions += extract_functions(hyp)
-        except Exception:
-            print(f"Error processing hypothesis file {prediction_files[idx]}:\n{hyp}")
-            raise
-
-    print(f"Extracted {len(ref_functions)} functions from reference repository.")
-    print(f"Extracted {len(hyp_functions)} functions from hypothesis repository.")
+    ref_functions, hyp_functions = get_repo_functions(reference_sources, prediction_sources)
 
     # 6. Remove comments and docstrings from each function
-    from parser import remove_comments_and_docstrings
-    ref_functions_wo_comments_docstrings = []
-    hyp_functions_wo_comments_docstrings = []
-    import time
-    start_time = time.time()
-    for idx, func in enumerate(ref_functions):
-        try:
-            ref_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
-        except Exception:
-            print(f"Error processing reference function {idx}:\n{func}")
-            raise
-    for idx, func in enumerate(hyp_functions):
-        try:
-            hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
-        except Exception:
-            print(f"Error processing hypothesis function {idx}:\n{func}")
-            raise
-    print(f"Removed comments and docstrings from functions in {time.time() - start_time} seconds.")
+    ref_functions_wo_comments_docstrings, hyp_functions_wo_comments_docstrings = remove_repo_comments_and_docstrings(ref_functions, hyp_functions, lang)
 
     # 7. Calculate n gram matches
-    if tokenizer is None:
-        def tokenizer(s):
-            return s.split()
-    start_time = time.time()
-    tokenized_hyps = tokenizer(prediction_source)
-    tokenized_refs = tokenizer(reference_source)
-    print(f"Tokenization took {time.time() - start_time} seconds.")
-    start_time = time.time()
-    ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
-    print(f"N-gram match calculation took {time.time() - start_time} seconds.")
+
     # ngram_match_score = 1
     
     # # 8. Calculate weighted n gram matches
@@ -301,10 +354,10 @@ def calc_repobleu(
     # tokenized_refs_with_weights = [tokenized_refs, make_weights(tokenized_refs, keywords)]
     # tokenized_hyps_with_weights = [tokenized_hyps, make_weights(tokenized_hyps, keywords)]
     # weighted_ngram_match_score = weighted_ngram_match.corpus_bleu([tokenized_refs_with_weights], [tokenized_hyps_with_weights])
-    weighted_ngram_match_score = 1
+    # weighted_ngram_match_score = 1
 
     # 9. Calculate structure match
-    structure_match_score = 1
+    # structure_match_score = 1
     # syntax_match.repo_structure_match(
     #     [[reference_repo]], [prediction_repo], lang, tree_sitter_language=tree_sitter_language
     # )

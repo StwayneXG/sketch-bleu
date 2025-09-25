@@ -17,46 +17,13 @@ def main(
     lang: str,
     weights: Tuple[float, float, float, float] = (0.25, 0.25, 0.25, 0.25),
 ) -> None:
-    # import time
-    # start_time = time.time()
     repo_bleu_score = calc_repobleu(
         Path(ref_repo),
         Path(hyp_repo),
         lang,
     )
     print(repo_bleu_score)
-    # print("Time taken: ", time.time() - start_time)
-    # print()
 
-    # pre_references = [[x.strip() for x in open(file, "r", encoding="utf-8").readlines()] for file in ref_files]
-    # hypothesis = [x.strip() for x in open(hyp_file, "r", encoding="utf-8").readlines()]
-
-    # for i in range(len(pre_references)):
-    #     assert len(hypothesis) == len(pre_references[i])
-
-    # references = []
-    # for i in range(len(hypothesis)):
-    #     ref_for_instance = []
-    #     for j in range(len(pre_references)):
-    #         ref_for_instance.append(pre_references[j][i])
-    #     references.append(ref_for_instance)
-    # assert len(references) == len(pre_references) * len(hypothesis)
-
-    # code_bleu_score = calc_codebleu(
-    #     references,
-    #     hypothesis,
-    #     lang,
-    #     weights=weights,
-    # )
-
-    # print(
-    #     f"ngram_match: {code_bleu_score['ngram_match_score']}",
-    #     f"weighted_ngram_match: {code_bleu_score['weighted_ngram_match_score']}",
-    #     f"syntax_match: {code_bleu_score['syntax_match_score']}",
-    #     f"dataflow_match: {code_bleu_score['dataflow_match_score']}",
-    # )
-
-    # print("CodeBLEU score: ", code_bleu_score["codebleu"])
 
 
 if __name__ == "__main__":
