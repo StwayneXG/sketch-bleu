@@ -362,11 +362,8 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     # Create sparse matrix with proper dimensions
     if len(data) > 0:
         biadjacency_matrix = csr_matrix((data, (row, col)))
-        logging.debug(f"Biadjacency matrix: {biadjacency_matrix.toarray()}")
         row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
         dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
-        logging.debug(f"Row indices: {row_ind}")
-        logging.debug(f"Column indices: {col_ind}")
     else:
         dataflow_match_score = 0
     
@@ -381,10 +378,20 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
             return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
 
     bp = min(getBP(len(ref_functions[0]), len(hyp_functions[0])), getBP(len(hyp_functions[0]), len(ref_functions[0])))
+    
+    logging.debug(f"Number of ref functions: {len(ref_dfgs_normalized)}")
+    logging.debug(f"Number of hyp functions: {len(hyp_dfgs_normalized)}")
+    logging.debug(f"Matrix shape: {biadjacency_matrix.shape}")
+    logging.debug(f"Sum of assigned similarities: {dataflow_match_score}")
+    logging.debug(f"Length of ref_functions[0]: {len(ref_functions[0])}")
+    logging.debug(f"Length of hyp_functions[0]: {len(hyp_functions[0])}")
+    logging.debug(f"BP value: {bp}")
 
     # Avoid division by zero
-    if min(len(ref_functions[0]), len(hyp_functions[0])) > 0:
-        results.append(dataflow_match_score / min(len(ref_functions[0]), len(hyp_functions[0])) * bp)
+    if len(ref_dfgs_normalized) > 0 and len(hyp_dfgs_normalized) > 0:
+        # Normalize by the number of functions being compared
+        normalized_score = dataflow_match_score / max(len(ref_dfgs_normalized), len(hyp_dfgs_normalized))
+        results.append(normalized_score * bp)
     else:
         results.append(0)
     
