@@ -116,7 +116,7 @@ def get_file_list(dir: Path, ext: str) -> List[Path]:
     file_list = []
     for root, dirs, files in os.walk(dir):
         for file in files:
-            if any(special_filepath in os.path.join(root, file) for special_filepath in SPECIAL_FILEPATHS):
+            if os.path.join(root, file) in SPECIAL_FILEPATHS:
                 continue
             if file.endswith(ext):
                 file_list.append(os.path.join(root, file))
