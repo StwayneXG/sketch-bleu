@@ -242,6 +242,14 @@ class FileOrNode:
             else:
                 return f"({self.labelOrNode.type})"
 
+def get_all_sub_trees(repo_tree):
+    """Extract all sub-tree S-expressions from a repo tree."""
+    all_nodes = repo_tree.get_all_sub_tree_nodes()
+    sub_tree_sexp_list = [x.to_str() for x in all_nodes]
+    sub_tree_sexp_list = [x for x in sub_tree_sexp_list if x != ""]
+    sub_tree_sexp_list = [x for x in sub_tree_sexp_list if re.search(r"\(.*\(.*\).*\)", x) is not None]
+    return sub_tree_sexp_list
+
 def repo_structure_match(references, candidates, lang, tree_sitter_language=None):
     if not tree_sitter_language:
         tree_sitter_language = get_tree_sitter_language(lang)
@@ -257,7 +265,7 @@ def repo_structure_match(references, candidates, lang, tree_sitter_language=None
         candidate_tree = RepoTree(candidate, parser)
         cand_sexps = get_all_sub_trees(candidate_tree)
         
-        # Calculate score against each reference and take the best/average
+        # Calculate score against each reference and take the best
         reference_scores = []
         for reference in references_sample:
             reference_tree = RepoTree(reference, parser)
@@ -271,7 +279,7 @@ def repo_structure_match(references, candidates, lang, tree_sitter_language=None
             score = match_count / len(ref_sexps)
             reference_scores.append(score)
         
-        # Take maximum score across references (or average, depending on your needs)
+        # Take maximum score across references
         total_scores.append(max(reference_scores) if reference_scores else 0.0)
-    
+
     return sum(total_scores) / len(total_scores) if total_scores else 0.0
