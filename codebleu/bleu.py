@@ -267,7 +267,7 @@ def modified_precision(references, hypothesis, n):
     # Extracts all ngrams in hypothesis
     # Set an empty Counter if hypothesis is empty.
 
-    counts = Counter()
+    counts = Counter(ngrams(hypothesis, n)) if len(hypothesis) >= n else Counter()
     # Extract a union of references' counts.
     # max_counts = reduce(or_, [Counter(ngrams(ref, n)) for ref in references])
     max_counts = {}
