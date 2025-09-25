@@ -11,8 +11,6 @@ def remove_comments_and_docstrings(source, lang):
         """
         Returns 'source' minus comments and docstrings.
         """
-        if "def _get_xdg_cache_dir" in source:
-            print(f"Source code before removing comments:\n{source}")
         io_obj = StringIO(source)
         out = ""
         prev_toktype = tokenize.INDENT

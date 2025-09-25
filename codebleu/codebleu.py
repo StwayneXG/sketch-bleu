@@ -172,7 +172,10 @@ def extract_functions(source):
         
 def get_file_content(file_path: Path) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
-        return f.read().strip()
+        file_content = f.read().strip()
+    if "    def do_custom_build(self, env):" in file_content:
+        print(f"File content from {file_path}:\n{file_content}")
+    return file_content
 
 def calc_repobleu(
     reference_repo: Path,
