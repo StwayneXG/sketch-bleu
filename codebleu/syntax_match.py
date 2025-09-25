@@ -242,44 +242,42 @@ class FileOrNode:
             else:
                 return f"({self.labelOrNode.type})"
 
-def get_all_sub_trees(repo_tree):
-    """Extract all sub-tree S-expressions from a repo tree."""
-    all_nodes = repo_tree.get_all_sub_tree_nodes()
-    sub_tree_sexp_list = [x.to_str() for x in all_nodes]
-    sub_tree_sexp_list = [x for x in sub_tree_sexp_list if x != ""]
-    sub_tree_sexp_list = [x for x in sub_tree_sexp_list if re.search(r"\(.*\(.*\).*\)", x) is not None]
-    return sub_tree_sexp_list
-
 def repo_structure_match(references, candidates, lang, tree_sitter_language=None):
     if not tree_sitter_language:
         tree_sitter_language = get_tree_sitter_language(lang)
 
     parser = Parser()
     parser.language = tree_sitter_language
-    
-    total_scores = []
-    
+    match_count = 0
+    match_count_candidate_to_reference = 0
+    total_count = 0
+
     for i in range(len(candidates)):
         references_sample = references[i]
         candidate = candidates[i]
         candidate_tree = RepoTree(candidate, parser)
-        cand_sexps = get_all_sub_trees(candidate_tree)
-        
-        # Calculate score against each reference and take the best
-        reference_scores = []
         for reference in references_sample:
             reference_tree = RepoTree(reference, parser)
-            ref_sexps = get_all_sub_trees(reference_tree)
-            
-            if len(ref_sexps) == 0:
-                reference_scores.append(0.0)
-                continue
-                
-            match_count = sum(1 for sub_tree in ref_sexps if sub_tree in cand_sexps)
-            score = match_count / len(ref_sexps)
-            reference_scores.append(score)
-        
-        # Take maximum score across references
-        total_scores.append(max(reference_scores) if reference_scores else 0.0)
+            def get_all_sub_trees(repo_tree):
+                all_nodes = repo_tree.get_all_sub_tree_nodes()
+                sub_tree_sexp_list = [x.to_str() for x in all_nodes]
+                sub_tree_sexp_list = [x for x in sub_tree_sexp_list if x != ""]
+                sub_tree_sexp_list = [x for x in sub_tree_sexp_list if re.search(r"\(.*\(.*\).*\)", x) is not None]
+                return sub_tree_sexp_list
 
-    return sum(total_scores) / len(total_scores) if total_scores else 0.0
+            cand_sexps = get_all_sub_trees(candidate_tree)
+            ref_sexps = get_all_sub_trees(reference_tree)
+
+            for sub_tree in ref_sexps:
+                if sub_tree in cand_sexps:
+                    match_count += 1
+
+            for sub_tree in cand_sexps:
+                if sub_tree in ref_sexps:
+                    match_count_candidate_to_reference += 1
+
+            total_count += len(ref_sexps)
+    print(f'match_count       {match_count} / {total_count}')
+    print(f'match_count_fixed {match_count_candidate_to_reference} / {total_count}')
+    score = match_count / total_count
+    return score
