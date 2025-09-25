@@ -438,6 +438,10 @@ def calc_repobleu(
 
     # 4. Stack source code into a single string
     reference_sources_stacked, prediction_sources_stacked = stack_repo_source_codes(reference_sources, prediction_sources)
+    if reference_sources_stacked == prediction_sources_stacked:
+        logging.debug("Reference and prediction sources are identical after stacking.")
+    else:
+        logging.debug("Reference and prediction sources differ after stacking.")
 
     # 5. Tokenize the stacked source code
     tokenized_refs, tokenized_hyps = tokenize_repo_source_codes(reference_sources_stacked, prediction_sources_stacked, tokenizer)
