@@ -263,27 +263,30 @@ def calc_repobleu(
     from parser import remove_comments_and_docstrings
     ref_functions_wo_comments_docstrings = []
     hyp_functions_wo_comments_docstrings = []
+    import time
+    start_time = time.time()
     for idx, func in enumerate(ref_functions):
         try:
             ref_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
         except Exception:
             print(f"Error processing reference function {idx}:\n{func}")
             raise
-    for idx, func in enumerate(hyp_functions):
-        try:
-            hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
-        except Exception:
-            print(f"Error processing hypothesis function {idx}:\n{func}")
-            raise
+    print(f"Time taken to remove comments and docstrings from reference functions: {time.time() - start_time} seconds")
+    # for idx, func in enumerate(hyp_functions):
+    #     try:
+    #         hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+    #     except Exception:
+    #         print(f"Error processing hypothesis function {idx}:\n{func}")
+    #         raise
     
-    # 7. Calculate n gram matches
-    if tokenizer is None:
-        def tokenizer(s):
-            return s.split()
+    # # 7. Calculate n gram matches
+    # if tokenizer is None:
+    #     def tokenizer(s):
+    #         return s.split()
 
-    tokenized_hyps = tokenizer(prediction_source)
-    tokenized_refs = tokenizer(reference_source)
-    ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
+    # tokenized_hyps = tokenizer(prediction_source)
+    # tokenized_refs = tokenizer(reference_source)
+    # ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
     # ngram_match_score = 1
     
     # # 8. Calculate weighted n gram matches
