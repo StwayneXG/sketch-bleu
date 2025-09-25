@@ -112,11 +112,11 @@ def stack_source_code(file_list: List[Path]) -> str:
 
 
 def get_file_list(dir: Path, ext: str) -> List[Path]:
-    SPECIAL_FILEPATHS = ["/testbed/augment_comments.py", "/testbed/mutate_methodnames.py", "/testbed/reorder_methods.py"]
+    SPECIAL_FILEPATHS = ["augment_comments.py", "mutate_methodnames.py", "reorder_methods.py"]
     file_list = []
     for root, dirs, files in os.walk(dir):
         for file in files:
-            if os.path.join(root, file) in SPECIAL_FILEPATHS:
+            if file in SPECIAL_FILEPATHS:
                 continue
             if file.endswith(ext):
                 file_list.append(os.path.join(root, file))
