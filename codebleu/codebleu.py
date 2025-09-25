@@ -239,25 +239,25 @@ def calc_repobleu(
 
     print("Successfully loaded source code from both repositories and stacked it.")
 
-    # # 5. Get functions from each file content
-    # ref_functions = []
-    # for idx, ref in enumerate(reference_sources):
-    #     try:
-    #         ref_functions += extract_functions(ref)
-    #     except Exception:
-    #         print(f"Error processing reference file {reference_files[idx]}:\n{ref}")
-    #         raise
+    # 5. Get functions from each file content
+    ref_functions = []
+    for idx, ref in enumerate(reference_sources):
+        try:
+            ref_functions += extract_functions(ref)
+        except Exception:
+            print(f"Error processing reference file {reference_files[idx]}:\n{ref}")
+            raise
 
-    # hyp_functions = []
-    # for idx, hyp in enumerate(prediction_sources):
-    #     try:
-    #         hyp_functions += extract_functions(hyp)
-    #     except Exception:
-    #         print(f"Error processing hypothesis file {prediction_files[idx]}:\n{hyp}")
-    #         raise
+    hyp_functions = []
+    for idx, hyp in enumerate(prediction_sources):
+        try:
+            hyp_functions += extract_functions(hyp)
+        except Exception:
+            print(f"Error processing hypothesis file {prediction_files[idx]}:\n{hyp}")
+            raise
 
-    # print(f"Extracted {len(ref_functions)} functions from reference repository.")
-    # print(f"Extracted {len(hyp_functions)} functions from hypothesis repository.")
+    print(f"Extracted {len(ref_functions)} functions from reference repository.")
+    print(f"Extracted {len(hyp_functions)} functions from hypothesis repository.")
 
     # # 6. Remove comments and docstrings from each function
     # from parser import remove_comments_and_docstrings
