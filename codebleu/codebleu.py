@@ -362,8 +362,11 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     # Create sparse matrix with proper dimensions
     if len(data) > 0:
         biadjacency_matrix = csr_matrix((data, (row, col)))
+        logging.debug(f"Biadjacency matrix: {biadjacency_matrix.toarray()}")
         row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
         dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+        logging.debug(f"Row indices: {row_ind}")
+        logging.debug(f"Column indices: {col_ind}")
     else:
         dataflow_match_score = 0
     
