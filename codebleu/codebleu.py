@@ -124,19 +124,31 @@ def get_file_list(dir: Path, ext: str) -> List[Path]:
     return file_list
 
 
-import ast  # Python 3
+import ast
 import typed_ast.ast27 as ast27
-
 
 def extract_functions(source):
     lines = source.splitlines()
 
     def extract_from_tree(tree, is_py3=True):
-        node_type = ast.FunctionDef if is_py3 else ast27.FunctionDef
+        if is_py3:
+            node_type = ast.FunctionDef
+        else:
+            node_type = ast27.FunctionDef
+
         functions = [node for node in ast.walk(tree) if isinstance(node, node_type)]
 
         function_sources = []
         for func in functions:
+            try:
+                # Use unparse if possible (Python 3.9+ and ast.FunctionDef)
+                if is_py3 and hasattr(ast, "unparse"):
+                    function_sources.append(ast.unparse(func))
+                    continue
+            except Exception:
+                pass
+
+            # Fallback: use line numbers
             start = func.lineno - 1
             indent = len(lines[start]) - len(lines[start].lstrip())
 
@@ -157,17 +169,14 @@ def extract_functions(source):
         return function_sources
 
     try:
-        # Try Python 3 AST first
         code_ast = ast.parse(source)
         return extract_from_tree(code_ast, is_py3=True)
-
-    except SyntaxError as e:
-        print("Python 3 AST parsing failed, trying Python 2 fallback.")
+    except SyntaxError:
         try:
             code_ast = ast27.parse(source)
             return extract_from_tree(code_ast, is_py3=False)
         except Exception as e:
-            print("typed_ast (Python 2) parsing also failed:", e)
+            print("Failed to parse:", e)
             return []
         
 def get_file_content(file_path: Path) -> str:
