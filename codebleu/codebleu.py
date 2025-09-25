@@ -287,8 +287,10 @@ def calc_repobleu(
     tokenized_hyps = tokenizer(prediction_source)
     tokenized_refs = tokenizer(reference_source)
     print(f"Tokenization took {time.time() - start_time} seconds.")
-    # ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
-    ngram_match_score = 1
+    start_time = time.time()
+    ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
+    print(f"N-gram match calculation took {time.time() - start_time} seconds.")
+    # ngram_match_score = 1
     
     # # 8. Calculate weighted n gram matches
     # with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
