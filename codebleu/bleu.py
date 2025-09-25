@@ -163,33 +163,33 @@ def corpus_bleu(
 
     # Calculate corpus-level brevity penalty.
     bp = brevity_penalty(ref_lengths, hyp_lengths)
+    print(f"Got brevity penalty of {bp} with ref length {ref_lengths} and hyp length {hyp_lengths}")
+    # # Uniformly re-weighting based on maximum hypothesis lengths if largest
+    # # order of n-grams < 4 and weights is set at default.
+    # if auto_reweigh:
+    #     if hyp_lengths < 4 and weights == (0.25, 0.25, 0.25, 0.25):
+    #         weights = (1 / hyp_lengths,) * hyp_lengths
 
-    # Uniformly re-weighting based on maximum hypothesis lengths if largest
-    # order of n-grams < 4 and weights is set at default.
-    if auto_reweigh:
-        if hyp_lengths < 4 and weights == (0.25, 0.25, 0.25, 0.25):
-            weights = (1 / hyp_lengths,) * hyp_lengths
+    # # Collects the various recall values for the different ngram orders.
+    # p_n = [(p_numerators[i], p_denominators[i]) for i, _ in enumerate(weights, start=1)]
 
-    # Collects the various recall values for the different ngram orders.
-    p_n = [(p_numerators[i], p_denominators[i]) for i, _ in enumerate(weights, start=1)]
+    # # Returns 0 if there's no matching n-grams
+    # # We only need to check for p_numerators[1] == 0, since if there's
+    # # no unigrams, there won't be any higher order ngrams.
+    # if p_numerators[1] == 0:
+    #     return 0
 
-    # Returns 0 if there's no matching n-grams
-    # We only need to check for p_numerators[1] == 0, since if there's
-    # no unigrams, there won't be any higher order ngrams.
-    if p_numerators[1] == 0:
-        return 0
-
-    # If there's no smoothing, set use method0 from SmoothinFunction class.
-    if not smoothing_function:
-        smoothing_function = SmoothingFunction().method1
-    # Smoothen the modified precision.
-    # Note: smoothing_function() may convert values into floats;
-    #       it tries to retain the Fraction object as much as the
-    #       smoothing method allows.
-    p_n = smoothing_function(p_n, references=references, hypothesis=hypothesis, hyp_len=hyp_lengths)
-    s = (w_i * math.log(p_i[0] / p_i[1]) for w_i, p_i in zip(weights, p_n) if w_i != 0)
-    s = bp * math.exp(math.fsum(s))
-    return s
+    # # If there's no smoothing, set use method0 from SmoothinFunction class.
+    # if not smoothing_function:
+    #     smoothing_function = SmoothingFunction().method1
+    # # Smoothen the modified precision.
+    # # Note: smoothing_function() may convert values into floats;
+    # #       it tries to retain the Fraction object as much as the
+    # #       smoothing method allows.
+    # p_n = smoothing_function(p_n, references=references, hypothesis=hypothesis, hyp_len=hyp_lengths)
+    # s = (w_i * math.log(p_i[0] / p_i[1]) for w_i, p_i in zip(weights, p_n) if w_i != 0)
+    # s = bp * math.exp(math.fsum(s))
+    # return s
 
 
 def modified_precision(references, hypothesis, n):
