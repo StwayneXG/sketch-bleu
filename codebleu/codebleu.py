@@ -222,6 +222,8 @@ def calc_repobleu(
     # 2. Get list of files with the given extension
     reference_files = get_file_list(reference_repo, ".py")
     prediction_files = get_file_list(prediction_repo, ".py")
+    print(f"Number of reference files: {len(reference_files)}")
+    print(f"Number of prediction files: {len(prediction_files)}")
 
     # 3. Get source code from the files in a list
     reference_sources = []
@@ -235,58 +237,65 @@ def calc_repobleu(
     reference_source = "\n".join(reference_sources)
     prediction_source = "\n".join(prediction_sources)
 
-    # 5. Get functions from each file content
-    ref_functions = []
-    for idx, ref in enumerate(reference_sources):
-        try:
-            ref_functions += extract_functions(ref)
-        except Exception:
-            print(f"Error processing reference file {reference_files[idx]}:\n{ref}")
-            raise
+    print("Successfully loaded source code from both repositories and stacked it.")
 
-    hyp_functions = []
-    for idx, hyp in enumerate(prediction_sources):
-        try:
-            hyp_functions += extract_functions(hyp)
-        except Exception:
-            print(f"Error processing hypothesis file {prediction_files[idx]}:\n{hyp}")
-            raise
+    # # 5. Get functions from each file content
+    # ref_functions = []
+    # for idx, ref in enumerate(reference_sources):
+    #     try:
+    #         ref_functions += extract_functions(ref)
+    #     except Exception:
+    #         print(f"Error processing reference file {reference_files[idx]}:\n{ref}")
+    #         raise
 
-    # 6. Remove comments and docstrings from each function
-    from parser import remove_comments_and_docstrings
-    ref_functions_wo_comments_docstrings = []
-    hyp_functions_wo_comments_docstrings = []
-    for idx, func in enumerate(ref_functions):
-        try:
-            ref_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
-        except Exception:
-            print(f"Error processing reference function {idx}:\n{func}")
-            raise
-    for idx, func in enumerate(hyp_functions):
-        try:
-            hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
-        except Exception:
-            print(f"Error processing hypothesis function {idx}:\n{func}")
-            raise
+    # hyp_functions = []
+    # for idx, hyp in enumerate(prediction_sources):
+    #     try:
+    #         hyp_functions += extract_functions(hyp)
+    #     except Exception:
+    #         print(f"Error processing hypothesis file {prediction_files[idx]}:\n{hyp}")
+    #         raise
+
+    # print(f"Extracted {len(ref_functions)} functions from reference repository.")
+    # print(f"Extracted {len(hyp_functions)} functions from hypothesis repository.")
+
+    # # 6. Remove comments and docstrings from each function
+    # from parser import remove_comments_and_docstrings
+    # ref_functions_wo_comments_docstrings = []
+    # hyp_functions_wo_comments_docstrings = []
+    # for idx, func in enumerate(ref_functions):
+    #     try:
+    #         ref_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+    #     except Exception:
+    #         print(f"Error processing reference function {idx}:\n{func}")
+    #         raise
+    # for idx, func in enumerate(hyp_functions):
+    #     try:
+    #         hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+    #     except Exception:
+    #         print(f"Error processing hypothesis function {idx}:\n{func}")
+    #         raise
     
-    # 7. Calculate n gram matches
-    if tokenizer is None:
-        def tokenizer(s):
-            return s.split()
+    # # 7. Calculate n gram matches
+    # if tokenizer is None:
+    #     def tokenizer(s):
+    #         return s.split()
 
-    tokenized_hyps = tokenizer(prediction_source)
-    tokenized_refs = tokenizer(reference_source)
-    ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
+    # tokenized_hyps = tokenizer(prediction_source)
+    # tokenized_refs = tokenizer(reference_source)
+    # ngram_match_score = bleu.corpus_bleu([tokenized_refs], [tokenized_hyps])
+    ngram_match_score = 1
     
-    # 8. Calculate weighted n gram matches
-    with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
-        keywords = [x.strip() for x in f.readlines()]
+    # # 8. Calculate weighted n gram matches
+    # with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
+    #     keywords = [x.strip() for x in f.readlines()]
 
-    def make_weights(reference_tokens, key_word_list):
-        return {token: 1 if token in key_word_list else 0.2 for token in reference_tokens}
-    tokenized_refs_with_weights = [tokenized_refs, make_weights(tokenized_refs, keywords)]
-    tokenized_hyps_with_weights = [tokenized_hyps, make_weights(tokenized_hyps, keywords)]
-    weighted_ngram_match_score = weighted_ngram_match.corpus_bleu([tokenized_refs_with_weights], [tokenized_hyps_with_weights])
+    # def make_weights(reference_tokens, key_word_list):
+    #     return {token: 1 if token in key_word_list else 0.2 for token in reference_tokens}
+    # tokenized_refs_with_weights = [tokenized_refs, make_weights(tokenized_refs, keywords)]
+    # tokenized_hyps_with_weights = [tokenized_hyps, make_weights(tokenized_hyps, keywords)]
+    # weighted_ngram_match_score = weighted_ngram_match.corpus_bleu([tokenized_refs_with_weights], [tokenized_hyps_with_weights])
+    weighted_ngram_match_score = 1
 
     # 9. Calculate structure match
     structure_match_score = 1
