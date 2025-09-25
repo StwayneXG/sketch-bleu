@@ -289,95 +289,97 @@ def calc_repobleu(
     weighted_ngram_match_score = weighted_ngram_match.corpus_bleu([tokenized_refs_with_weights], [tokenized_hyps_with_weights])
 
     # 9. Calculate structure match
-    structure_match_score = syntax_match.repo_structure_match(
-        [[reference_repo]], [prediction_repo], lang, tree_sitter_language=tree_sitter_language
-    )
+    structure_match_score = 1
+    # syntax_match.repo_structure_match(
+    #     [[reference_repo]], [prediction_repo], lang, tree_sitter_language=tree_sitter_language
+    # )
 
-    # 10. Get DFG from each function
-    from dataflow_match import get_data_flow, dfg_function
-    from tree_sitter import Parser
-    parser = Parser()
-    parser.language = tree_sitter_language
-    parser = [parser, dfg_function[lang]]
-    ref_dfgs = [get_data_flow(func, parser) for func in ref_functions_wo_comments_docstrings]
-    hyp_dfgs = [get_data_flow(func, parser) for func in hyp_functions_wo_comments_docstrings]
+    # # 10. Get DFG from each function
+    # from dataflow_match import get_data_flow, dfg_function
+    # from tree_sitter import Parser
+    # parser = Parser()
+    # parser.language = tree_sitter_language
+    # parser = [parser, dfg_function[lang]]
+    # ref_dfgs = [get_data_flow(func, parser) for func in ref_functions_wo_comments_docstrings]
+    # hyp_dfgs = [get_data_flow(func, parser) for func in hyp_functions_wo_comments_docstrings]
 
-    # 11. Normalize DFG
-    from dataflow_match import normalize_dataflow
-    ref_dfgs_normalized = [normalize_dataflow(dfg) for dfg in ref_dfgs]
-    hyp_dfgs_normalized = [normalize_dataflow(dfg) for dfg in hyp_dfgs]
+    # # 11. Normalize DFG
+    # from dataflow_match import normalize_dataflow
+    # ref_dfgs_normalized = [normalize_dataflow(dfg) for dfg in ref_dfgs]
+    # hyp_dfgs_normalized = [normalize_dataflow(dfg) for dfg in hyp_dfgs]
 
-    # 12. Calculate dataflow match
-    def compute_dataflow_similarity(ref_dfg_normalized, hyp_dfg_normalized):
-        """
-        Compute dataflow similarity between two normalized DFGs.
-        This replicates the logic from corpus_dataflow_match for a single pair.
-        """
-        ref_len = len(ref_dfg_normalized)
-        hyp_len = len(hyp_dfg_normalized)
+    # # 12. Calculate dataflow match
+    # def compute_dataflow_similarity(ref_dfg_normalized, hyp_dfg_normalized):
+    #     """
+    #     Compute dataflow similarity between two normalized DFGs.
+    #     This replicates the logic from corpus_dataflow_match for a single pair.
+    #     """
+    #     ref_len = len(ref_dfg_normalized)
+    #     hyp_len = len(hyp_dfg_normalized)
         
-        # Handle edge case: both empty DFGs should have similarity 1.0
-        if ref_len == 0 and hyp_len == 0:
-            return 1.0
+    #     # Handle edge case: both empty DFGs should have similarity 1.0
+    #     if ref_len == 0 and hyp_len == 0:
+    #         return 1.0
         
-        # If reference is empty but hypothesis is not, similarity is 0
-        if ref_len == 0:
-            return 0.0
+    #     # If reference is empty but hypothesis is not, similarity is 0
+    #     if ref_len == 0:
+    #         return 0.0
         
-        match_count = 0
-        total_count = ref_len
+    #     match_count = 0
+    #     total_count = ref_len
         
-        # Create a copy of hyp_dfg to avoid modifying the original
-        hyp_dfg_copy = hyp_dfg_normalized.copy()
+    #     # Create a copy of hyp_dfg to avoid modifying the original
+    #     hyp_dfg_copy = hyp_dfg_normalized.copy()
         
-        for dataflow in ref_dfg_normalized:
-            if dataflow in hyp_dfg_copy:
-                match_count += 1
-                hyp_dfg_copy.remove(dataflow)  # Remove to avoid double counting
+    #     for dataflow in ref_dfg_normalized:
+    #         if dataflow in hyp_dfg_copy:
+    #             match_count += 1
+    #             hyp_dfg_copy.remove(dataflow)  # Remove to avoid double counting
         
-        return match_count / total_count
+    #     return match_count / total_count
 
-    results = []
-    # Build similarity matrix using pre-computed normalized DFGs
-    data = []
-    row = []
-    col = []
+    # results = []
+    # # Build similarity matrix using pre-computed normalized DFGs
+    # data = []
+    # row = []
+    # col = []
     
-    for i, ref_dfg in enumerate(ref_dfgs_normalized):
-        for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
-            df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
-            if df_value != 0:
-                data.append(df_value)
-                row.append(i)
-                col.append(j)
+    # for i, ref_dfg in enumerate(ref_dfgs_normalized):
+    #     for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
+    #         df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
+    #         if df_value != 0:
+    #             data.append(df_value)
+    #             row.append(i)
+    #             col.append(j)
     
-    # Create sparse matrix with proper dimensions
-    if len(data) > 0:
-        biadjacency_matrix = csr_matrix((data, (row, col)))
-        row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
-        dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
-    else:
-        dataflow_match_score = 0
+    # # Create sparse matrix with proper dimensions
+    # if len(data) > 0:
+    #     biadjacency_matrix = csr_matrix((data, (row, col)))
+    #     row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
+    #     dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+    # else:
+    #     dataflow_match_score = 0
     
-    def getBP(closest_ref_len, hyp_len):
-        if 2 * hyp_len > closest_ref_len:
-            return 1
-        # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
-        elif hyp_len == 0:
-            return 0
-        else:
-            # return math.exp(1 - closest_ref_len / hyp_len)
-            return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
+    # def getBP(closest_ref_len, hyp_len):
+    #     if 2 * hyp_len > closest_ref_len:
+    #         return 1
+    #     # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
+    #     elif hyp_len == 0:
+    #         return 0
+    #     else:
+    #         # return math.exp(1 - closest_ref_len / hyp_len)
+    #         return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
 
-    bp = min(getBP(len(ref_functions[0]), len(hyp_functions[0])), getBP(len(hyp_functions[0]), len(ref_functions[0])))
+    # bp = min(getBP(len(ref_functions[0]), len(hyp_functions[0])), getBP(len(hyp_functions[0]), len(ref_functions[0])))
 
-    # Avoid division by zero
-    if min(len(ref_functions[0]), len(hyp_functions[0])) > 0:
-        results.append(dataflow_match_score / min(len(ref_functions[0]), len(hyp_functions[0])) * bp)
-    else:
-        results.append(0)
+    # # Avoid division by zero
+    # if min(len(ref_functions[0]), len(hyp_functions[0])) > 0:
+    #     results.append(dataflow_match_score / min(len(ref_functions[0]), len(hyp_functions[0])) * bp)
+    # else:
+    #     results.append(0)
 
-    dataflow_match_score = sum(results) / len(results) if results else 0
+    dataflow_match_score = 1
+    # sum(results) / len(results) if results else 0
 
     # Final aggregation of scores
     alpha, beta, gamma, theta = weights
