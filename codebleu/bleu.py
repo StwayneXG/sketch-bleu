@@ -143,8 +143,6 @@ def corpus_bleu(
     assert len(list_of_references) == len(hypotheses), (
         "The number of hypotheses and their reference(s) should be the " "same "
     )
-    print("Function called")
-    return 1
 
     # Iterate through each hypothesis and their corresponding references.
     for references, hypothesis in zip(list_of_references, hypotheses):
@@ -162,7 +160,8 @@ def corpus_bleu(
         hyp_len = len(hypothesis)
         hyp_lengths += hyp_len
         ref_lengths += closest_ref_length(references, hyp_len)
-
+    print(f"Hyp lengths: {hyp_lengths}, Ref lengths: {ref_lengths}")
+    return 1
     # Calculate corpus-level brevity penalty.
     bp = brevity_penalty(ref_lengths, hyp_lengths)
 
