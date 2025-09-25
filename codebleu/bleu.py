@@ -151,9 +151,9 @@ def corpus_bleu(
         for i, w in enumerate(weights, start=1):
             if w == 0:
                 continue
-        #     p_i_numerator, p_i_denominator = modified_precision(references, hypothesis, i)
-        #     p_numerators[i] += p_i_numerator
-        #     p_denominators[i] += p_i_denominator
+            p_i_numerator, p_i_denominator = modified_precision(references, hypothesis, i)
+            p_numerators[i] += p_i_numerator
+            p_denominators[i] += p_i_denominator
 
         # # Calculate the hypothesis length and the closest reference length.
         # # Adds them to the corpus-level hypothesis and reference counts.
