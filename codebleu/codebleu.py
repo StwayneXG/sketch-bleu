@@ -11,7 +11,7 @@ PACKAGE_DIR = Path(__file__).parent
 
 import logging
 import time
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 def calc_codebleu(
     references: Union[List[str], List[List[str]]],
