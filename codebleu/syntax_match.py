@@ -271,11 +271,13 @@ def repo_structure_match(references, candidates, lang, tree_sitter_language=None
             for sub_tree in ref_sexps:
                 if sub_tree in cand_sexps:
                     match_count += 1
-
+                else:
+                    print(f"UNMATCHED REF: {repr(sub_tree)}")
             for sub_tree in cand_sexps:
                 if sub_tree in ref_sexps:
                     match_count_candidate_to_reference += 1
-
+                else:
+                    print(f"UNMATCHED REF: {repr(sub_tree)}")
             total_count += len(ref_sexps)
     print(f'match_count       {match_count} / {total_count}')
     print(f'match_count_fixed {match_count_candidate_to_reference} / {total_count}')
