@@ -294,7 +294,7 @@ def find_exact_difference(reference_repo, candidate_repo, parser):
         return sub_tree_sexp_list
     
     cand_sexps = get_all_sub_trees(candidate_tree)
-    ref_sexps = get_all_sub_trees(reference_repo)
+    ref_sexps = get_all_sub_trees(reference_tree)
     
     # Convert to sets to find the exact difference
     ref_set = set(ref_sexps)
