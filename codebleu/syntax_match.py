@@ -242,44 +242,35 @@ class FileOrNode:
             else:
                 return f"({self.labelOrNode.type})"
 
-def repo_structure_match(references, candidates, lang, tree_sitter_language=None):
+def repo_structure_match(reference_repo, candidate_repo, lang, tree_sitter_language=None):
     if not tree_sitter_language:
         tree_sitter_language = get_tree_sitter_language(lang)
 
     parser = Parser()
     parser.language = tree_sitter_language
-    match_count = 0
-    match_count_candidate_to_reference = 0
+
+    candidate_tree = RepoTree(candidate_repo, parser)
+    reference_tree = RepoTree(reference_repo, parser)
+
+    def get_all_sub_trees(repo_tree):
+        all_nodes = repo_tree.get_all_sub_tree_nodes()
+        sub_tree_sexp_list = [x.to_str() for x in all_nodes]
+        sub_tree_sexp_list = [x for x in sub_tree_sexp_list if x != ""]
+        sub_tree_sexp_list = [x for x in sub_tree_sexp_list if re.search(r"\(.*\(.*\).*\)", x) is not None]
+        return sub_tree_sexp_list
+    
+    cand_sexps = get_all_sub_trees(candidate_tree)
+    ref_sexps = get_all_sub_trees(reference_tree)
+
     total_count = 0
+    match_count = 0
+    for sub_tree in ref_sexps:
+        if sub_tree in cand_sexps:
+            match_count += 1
+        else:
+            print(f"UNMATCHED REF: {repr(sub_tree)}")
 
-    for i in range(len(candidates)):
-        references_sample = references[i]
-        candidate = candidates[i]
-        candidate_tree = RepoTree(candidate, parser)
-        for reference in references_sample:
-            reference_tree = RepoTree(reference, parser)
-            def get_all_sub_trees(repo_tree):
-                all_nodes = repo_tree.get_all_sub_tree_nodes()
-                sub_tree_sexp_list = [x.to_str() for x in all_nodes]
-                sub_tree_sexp_list = [x for x in sub_tree_sexp_list if x != ""]
-                sub_tree_sexp_list = [x for x in sub_tree_sexp_list if re.search(r"\(.*\(.*\).*\)", x) is not None]
-                return sub_tree_sexp_list
-
-            cand_sexps = get_all_sub_trees(candidate_tree)
-            ref_sexps = get_all_sub_trees(reference_tree)
-
-            for sub_tree in ref_sexps:
-                if sub_tree in cand_sexps:
-                    match_count += 1
-                else:
-                    print(f"UNMATCHED REF: {repr(sub_tree)}")
-            for sub_tree in cand_sexps:
-                if sub_tree in ref_sexps:
-                    match_count_candidate_to_reference += 1
-                else:
-                    print(f"UNMATCHED REF: {repr(sub_tree)}")
-            total_count += len(ref_sexps)
-    print(f'match_count       {match_count} / {total_count}')
-    print(f'match_count_fixed {match_count_candidate_to_reference} / {total_count}')
+    total_count += len(ref_sexps)
     score = match_count / total_count
+    print(f'match_count       {match_count} / {total_count}')
     return score

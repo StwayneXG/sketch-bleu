@@ -247,7 +247,7 @@ def calc_weighted_ngram_match(tokenized_refs: List[str], tokenized_hyps: List[st
 def calc_structure_match(reference_repo: Path, prediction_repo: Path, lang: str, tree_sitter_language) -> float:
     start_time = time.time()
     structure_match_score = syntax_match.repo_structure_match(
-        [[reference_repo]], [prediction_repo], lang, tree_sitter_language=tree_sitter_language
+        reference_repo, prediction_repo, lang, tree_sitter_language=tree_sitter_language
     )
     logging.debug(f"Time taken to calculate structure match: {(time.time() - start_time):.2f} seconds")
     return structure_match_score
