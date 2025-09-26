@@ -100,13 +100,7 @@ class RepoTree:
     def __init__(self, repo_dir: Path, parser):
         self.repo_dir = repo_dir
         self.parser = parser
-        self.SPECIAL_FILEPATHS = ["augment_comments.py", "mutate_methodnames.py", "reorder_methods.py"]
         self.root = self.init_from_repo(repo_dir)
-
-    def _should_ignore_file(self, filepath):
-        """Check if file should be ignored based on filename"""
-        filename = os.path.basename(filepath)
-        return filename in self.SPECIAL_FILEPATHS
 
     def init_from_repo(self, repo_dir):
         # Create a consistent root structure
@@ -120,25 +114,17 @@ class RepoTree:
                 for item in items:
                     item_path = os.path.join(repo_dir, item)
                     if os.path.isfile(item_path) and item.endswith(".py"):
-                        # Skip special files completely
-                        if not self._should_ignore_file(item_path):
-                            file_node = self._build_tree_recursive(item_path, "File")
-                            if file_node is not None:  # Only add if not None
-                                self.root.add_child(file_node)
+                        file_node = self._build_tree_recursive(item_path, "File")
+                        self.root.add_child(file_node)
                     elif os.path.isdir(item_path):
                         dir_node = self._build_tree_recursive(item_path, "Directory")
-                        if dir_node is not None:  # Only add if not None
-                            self.root.add_child(dir_node)
+                        self.root.add_child(dir_node)
             except PermissionError:
                 pass
         
         return self.root
 
     def _build_tree_recursive(self, path, node_type):
-        # Skip special files completely - don't even create a node
-        if os.path.isfile(path) and self._should_ignore_file(path):
-            return None  # Return None for ignored files
-            
         node = FileOrNode(node_type)
         
         if os.path.isfile(path) and path.endswith(".py"):
@@ -164,18 +150,17 @@ class RepoTree:
                 for item in items:
                     item_path = os.path.join(path, item)
                     if os.path.isfile(item_path) and item.endswith(".py"):
-                        # Only add if not a special file
-                        if not self._should_ignore_file(item_path):
-                            file_node = self._build_tree_recursive(item_path, "File")
-                            if file_node is not None:  # Check for None
-                                node.add_child(file_node)
+                        file_node = self._build_tree_recursive(item_path, "File")
+                        node.add_child(file_node)
                     elif os.path.isdir(item_path):
                         dir_node = self._build_tree_recursive(item_path, "Directory")
-                        if dir_node is not None:  # Check for None
-                            node.add_child(dir_node)
+                        node.add_child(dir_node)
             except PermissionError:
                 # Handle directories we can't access
                 pass
+        
+        return node
+
 
     def init_from_file(self, file):
         ele = FileOrNode("File")
@@ -296,7 +281,6 @@ def repo_structure_match(reference_repo, candidate_repo, lang, tree_sitter_langu
     
     cand_sexps = get_all_sub_trees(candidate_tree)
     ref_sexps = get_all_sub_trees(reference_tree)
-
     print(f"Candidate subtrees: {len(cand_sexps)}")
     print(f"Reference subtrees: {len(ref_sexps)}")
 
