@@ -103,7 +103,25 @@ class RepoTree:
         self.root = self.init_from_repo(repo_dir)
 
     def init_from_repo(self, repo_dir):
-        self.root = self._build_tree_recursive(repo_dir, "Root")
+        # Create a consistent root structure
+        self.root = FileOrNode("Root")
+        
+        # Process the directory contents and add them to root
+        if os.path.isdir(repo_dir):
+            try:
+                # IMPORTANT: Sort for consistent ordering
+                items = sorted(os.listdir(repo_dir))
+                for item in items:
+                    item_path = os.path.join(repo_dir, item)
+                    if os.path.isfile(item_path) and item.endswith(".py"):
+                        file_node = self._build_tree_recursive(item_path, "File")
+                        self.root.add_child(file_node)
+                    elif os.path.isdir(item_path):
+                        dir_node = self._build_tree_recursive(item_path, "Directory")
+                        self.root.add_child(dir_node)
+            except PermissionError:
+                pass
+        
         return self.root
 
     def _build_tree_recursive(self, path, node_type):
@@ -127,7 +145,9 @@ class RepoTree:
         elif os.path.isdir(path):
             # It's a directory, process its contents
             try:
-                for item in os.listdir(path):
+                # IMPORTANT: Sort for consistent ordering
+                items = sorted(os.listdir(path))
+                for item in items:
                     item_path = os.path.join(path, item)
                     if os.path.isfile(item_path) and item.endswith(".py"):
                         file_node = self._build_tree_recursive(item_path, "File")
