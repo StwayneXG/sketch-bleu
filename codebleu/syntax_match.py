@@ -249,6 +249,10 @@ def repo_structure_match(reference_repo, candidate_repo, lang, tree_sitter_langu
     parser = Parser()
     parser.language = tree_sitter_language
 
+    
+    # Quick test - add this right before your repo_structure_match call:
+    find_exact_difference(reference_repo, candidate_repo, parser)
+
     print(f"Calculating structure match between {reference_repo} and {candidate_repo}...")
     candidate_tree = RepoTree(candidate_repo, parser)
     reference_tree = RepoTree(reference_repo, parser)
@@ -275,3 +279,49 @@ def repo_structure_match(reference_repo, candidate_repo, lang, tree_sitter_langu
     score = match_count / total_count
     print(f'match_count       {match_count} / {total_count}')
     return score
+
+def find_exact_difference(reference_repo, candidate_repo, parser):
+    """Find the exact difference causing the mismatch"""
+    
+    candidate_tree = RepoTree(candidate_repo, parser)
+    reference_tree = RepoTree(reference_repo, parser)
+
+    def get_all_sub_trees(repo_tree):
+        all_nodes = repo_tree.get_all_sub_tree_nodes()
+        sub_tree_sexp_list = [x.to_str() for x in all_nodes]
+        sub_tree_sexp_list = [x for x in sub_tree_sexp_list if x != ""]
+        sub_tree_sexp_list = [x for x in sub_tree_sexp_list if re.search(r"\(.*\(.*\).*\)", x) is not None]
+        return sub_tree_sexp_list
+    
+    cand_sexps = get_all_sub_trees(candidate_tree)
+    ref_sexps = get_all_sub_trees(reference_repo)
+    
+    # Convert to sets to find the exact difference
+    ref_set = set(ref_sexps)
+    cand_set = set(cand_sexps)
+    
+    only_in_ref = ref_set - cand_set
+    only_in_cand = cand_set - ref_set
+    
+    print(f"Items only in reference ({len(only_in_ref)}):")
+    for item in only_in_ref:
+        print(f"REF ONLY: {repr(item)}")
+    
+    print(f"\nItems only in candidate ({len(only_in_cand)}):")
+    for item in only_in_cand:
+        print(f"CAND ONLY: {repr(item)}")
+    
+    # Also check if there are duplicates with different counts
+    from collections import Counter
+    ref_counter = Counter(ref_sexps)
+    cand_counter = Counter(cand_sexps)
+    
+    print(f"\nChecking for count differences...")
+    all_keys = set(ref_counter.keys()) | set(cand_counter.keys())
+    
+    for key in all_keys:
+        ref_count = ref_counter.get(key, 0)
+        cand_count = cand_counter.get(key, 0)
+        if ref_count != cand_count:
+            print(f"COUNT DIFF: {repr(key)}")
+            print(f"  Reference: {ref_count}, Candidate: {cand_count}")
