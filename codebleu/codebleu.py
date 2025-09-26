@@ -398,7 +398,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     dataflow_match_score = sum(results) / len(results) if results else 0
 
     logging.debug(f"Time taken to calculate dataflow match: {(time.time() - start_time):.2f} seconds")
-    return dataflow_match_score
+    return float(dataflow_match_score)
 
 def calc_repobleu(
     reference_repo: Path,
