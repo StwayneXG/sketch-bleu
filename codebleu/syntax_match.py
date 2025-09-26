@@ -100,7 +100,13 @@ class RepoTree:
     def __init__(self, repo_dir: Path, parser):
         self.repo_dir = repo_dir
         self.parser = parser
+        self.SPECIAL_FILEPATHS = ["augment_comments.py", "mutate_methodnames.py", "reorder_methods.py"]
         self.root = self.init_from_repo(repo_dir)
+
+    def _should_ignore_file(self, filepath):
+        """Check if file should be ignored based on filename"""
+        filename = os.path.basename(filepath)
+        return filename in self.SPECIAL_FILEPATHS
 
     def init_from_repo(self, repo_dir):
         # Create a consistent root structure
@@ -114,17 +120,25 @@ class RepoTree:
                 for item in items:
                     item_path = os.path.join(repo_dir, item)
                     if os.path.isfile(item_path) and item.endswith(".py"):
-                        file_node = self._build_tree_recursive(item_path, "File")
-                        self.root.add_child(file_node)
+                        # Skip special files completely
+                        if not self._should_ignore_file(item_path):
+                            file_node = self._build_tree_recursive(item_path, "File")
+                            if file_node is not None:  # Only add if not None
+                                self.root.add_child(file_node)
                     elif os.path.isdir(item_path):
                         dir_node = self._build_tree_recursive(item_path, "Directory")
-                        self.root.add_child(dir_node)
+                        if dir_node is not None:  # Only add if not None
+                            self.root.add_child(dir_node)
             except PermissionError:
                 pass
         
         return self.root
 
     def _build_tree_recursive(self, path, node_type):
+        # Skip special files completely - don't even create a node
+        if os.path.isfile(path) and self._should_ignore_file(path):
+            return None  # Return None for ignored files
+            
         node = FileOrNode(node_type)
         
         if os.path.isfile(path) and path.endswith(".py"):
@@ -150,17 +164,18 @@ class RepoTree:
                 for item in items:
                     item_path = os.path.join(path, item)
                     if os.path.isfile(item_path) and item.endswith(".py"):
-                        file_node = self._build_tree_recursive(item_path, "File")
-                        node.add_child(file_node)
+                        # Only add if not a special file
+                        if not self._should_ignore_file(item_path):
+                            file_node = self._build_tree_recursive(item_path, "File")
+                            if file_node is not None:  # Check for None
+                                node.add_child(file_node)
                     elif os.path.isdir(item_path):
                         dir_node = self._build_tree_recursive(item_path, "Directory")
-                        node.add_child(dir_node)
+                        if dir_node is not None:  # Check for None
+                            node.add_child(dir_node)
             except PermissionError:
                 # Handle directories we can't access
                 pass
-        
-        return node
-
 
     def init_from_file(self, file):
         ele = FileOrNode("File")
@@ -269,11 +284,6 @@ def repo_structure_match(reference_repo, candidate_repo, lang, tree_sitter_langu
     parser = Parser()
     parser.language = tree_sitter_language
 
-    
-    # Quick test - add this right before your repo_structure_match call:
-    find_exact_difference(reference_repo, candidate_repo, parser)
-
-    print(f"Calculating structure match between {reference_repo} and {candidate_repo}...")
     candidate_tree = RepoTree(candidate_repo, parser)
     reference_tree = RepoTree(reference_repo, parser)
 
@@ -292,56 +302,8 @@ def repo_structure_match(reference_repo, candidate_repo, lang, tree_sitter_langu
     for sub_tree in ref_sexps:
         if sub_tree in cand_sexps:
             match_count += 1
-        else:
-            print(f"UNMATCHED REF: {repr(sub_tree)}")
 
     total_count += len(ref_sexps)
     score = match_count / total_count
-    print(f'match_count       {match_count} / {total_count}')
     return score
 
-def find_exact_difference(reference_repo, candidate_repo, parser):
-    """Find the exact difference causing the mismatch"""
-    
-    candidate_tree = RepoTree(candidate_repo, parser)
-    reference_tree = RepoTree(reference_repo, parser)
-
-    def get_all_sub_trees(repo_tree):
-        all_nodes = repo_tree.get_all_sub_tree_nodes()
-        sub_tree_sexp_list = [x.to_str() for x in all_nodes]
-        sub_tree_sexp_list = [x for x in sub_tree_sexp_list if x != ""]
-        sub_tree_sexp_list = [x for x in sub_tree_sexp_list if re.search(r"\(.*\(.*\).*\)", x) is not None]
-        return sub_tree_sexp_list
-    
-    cand_sexps = get_all_sub_trees(candidate_tree)
-    ref_sexps = get_all_sub_trees(reference_tree)
-    
-    # Convert to sets to find the exact difference
-    ref_set = set(ref_sexps)
-    cand_set = set(cand_sexps)
-    
-    only_in_ref = ref_set - cand_set
-    only_in_cand = cand_set - ref_set
-    
-    print(f"Items only in reference ({len(only_in_ref)}):")
-    for item in only_in_ref:
-        print(f"REF ONLY: {repr(item)}")
-    
-    print(f"\nItems only in candidate ({len(only_in_cand)}):")
-    for item in only_in_cand:
-        print(f"CAND ONLY: {repr(item)}")
-    
-    # Also check if there are duplicates with different counts
-    from collections import Counter
-    ref_counter = Counter(ref_sexps)
-    cand_counter = Counter(cand_sexps)
-    
-    print(f"\nChecking for count differences...")
-    all_keys = set(ref_counter.keys()) | set(cand_counter.keys())
-    
-    for key in all_keys:
-        ref_count = ref_counter.get(key, 0)
-        cand_count = cand_counter.get(key, 0)
-        if ref_count != cand_count:
-            print(f"COUNT DIFF: {repr(key)}")
-            print(f"  Reference: {ref_count}, Candidate: {cand_count}")
