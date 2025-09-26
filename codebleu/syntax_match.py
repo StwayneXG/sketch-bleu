@@ -249,8 +249,9 @@ def repo_structure_match(reference_repo, candidate_repo, lang, tree_sitter_langu
     parser = Parser()
     parser.language = tree_sitter_language
 
+    print(f"Calculating structure match between {reference_repo} and {candidate_repo}...")
     candidate_tree = RepoTree(candidate_repo, parser)
-    reference_tree = RepoTree(candidate_repo, parser)
+    reference_tree = RepoTree(reference_repo, parser)
 
     def get_all_sub_trees(repo_tree):
         all_nodes = repo_tree.get_all_sub_tree_nodes()
