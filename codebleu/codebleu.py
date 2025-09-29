@@ -481,6 +481,9 @@ def calc_repobleu(
         tokenized_refs_with_weights, tokenized_hyps_with_weights
     )
 
+    print(f"references:{references}")
+    print(f"predictions:{predictions}")
+
     # calculate dataflow match
     ref_functions = [extract_functions(ref) for ref in references]
     hyp_functions = [extract_functions(hyp) for hyp in predictions]
