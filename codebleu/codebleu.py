@@ -481,12 +481,15 @@ def calc_repobleu(
         tokenized_refs_with_weights, tokenized_hyps_with_weights
     )
 
-    print(f"references:{references}")
-    print(f"predictions:{predictions}")
+    print(f"Length of references = {len(references)}, Length of predictions = {len(predictions)}")
+    print(f"references = {references}")
+    print(f"predictions = {predictions}")
 
     # calculate dataflow match
     ref_functions = [extract_functions(ref) for ref in references]
     hyp_functions = [extract_functions(hyp) for hyp in predictions]
+    print(f"length of ref_functions = {len(ref_functions)}")
+    print(f"length of hyp_functions = {len(hyp_functions)}")
     results = []
     print(f"Length for ref_functions = {len(ref_functions)}")
     for case in range(len(ref_functions)):
