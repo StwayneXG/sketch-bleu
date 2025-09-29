@@ -482,8 +482,8 @@ def calc_repobleu(
     )
 
     print(f"Length of references = {len(references)}, Length of predictions = {len(predictions)}")
-    print(f"references = {references}")
-    print(f"predictions = {predictions}")
+    # print(f"references = {references}")
+    # print(f"predictions = {predictions}")
 
     # calculate dataflow match
     ref_functions = [extract_functions(ref) for ref in references]
