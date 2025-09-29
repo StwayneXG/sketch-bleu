@@ -133,11 +133,13 @@ def extract_functions(source):
         node_type = ast.FunctionDef
     except SyntaxError:
         # Fallback to Python 2
+        print(f"Python 3 failed")
         try:
             import typed_ast.ast27 as ast27
             tree = ast27.parse(source)
             node_type = ast27.FunctionDef
         except:
+            print(f"Python 2 failed")
             return []
     
     functions = [node for node in ast.walk(tree) if isinstance(node, node_type)]
