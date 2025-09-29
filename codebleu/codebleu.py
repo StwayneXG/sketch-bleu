@@ -466,6 +466,9 @@ def calc_repobleu(
     print(f"length of ref_functions = {len(ref_functions)}")
     print(f"length of hyp_functions = {len(hyp_functions)}")
     results = []
+    print(f"type for ref_functions[0] = {type(ref_functions[0])}")
+    print(f"type for ref_functions[0] = {type(ref_functions[0])}")
+
     print(f"length for ref_functions[0] = {len(ref_functions[0])}")
     print(f"length for hyp_functions[0] = {len(hyp_functions[0])}")
 
