@@ -125,55 +125,28 @@ def get_file_list(dir: Path, ext: str) -> List[Path]:
     return file_list
 
 def extract_functions(source):
-    lines = source.splitlines()
-
-    # Try Python 3 first
     try:
-        tree = ast.parse(source)
-        node_type = ast.FunctionDef
-    except SyntaxError:
-        # Fallback to Python 2
-        print(f"Python 3 failed")
-        try:
-            import typed_ast.ast27 as ast27
-            tree = ast27.parse(source)
-            node_type = ast27.FunctionDef
-        except:
-            print(f"Python 2 failed")
-            return []
+        code_ast = ast.parse(source)
+        functions = [node for node in ast.walk(code_ast) if isinstance(node, ast.FunctionDef)]
+        function_sources = [ast.get_source_segment(source, function) for function in functions]
+        return function_sources
+    except:
+        lines = source.split("\n")
+        start = 0
+        function_sources = []
+        while start < len(lines):
+            line = lines[start]
+            if line.startswith("def "):
+                end = start + 1
+                while True:
+                    if not lines[end].startswith(" ") and not lines[end].startswith("\t"):
+                        function_sources.append("\n".join(lines[start:end]))
+                        start = end
+                        break
+                    end += 1
+            start += 1
+        return function_sources
     
-    functions = [node for node in ast.walk(tree) if isinstance(node, node_type)]
-    
-    result = []
-    for func in functions:
-        # Try ast.unparse first (Python 3.9+)
-        if hasattr(ast, 'unparse'):
-            try:
-                result.append(ast.unparse(func))
-                continue
-            except:
-                pass
-        
-        # Fallback: extract by line numbers
-        start = func.lineno - 1
-        base_indent = len(lines[start]) - len(lines[start].lstrip())
-        
-        end = start + 1
-        while end < len(lines):
-            line = lines[end]
-            # Skip empty lines - they don't determine function boundaries
-            if line.strip() == "":
-                end += 1
-                continue
-            # Only stop if we find a non-empty line with less/equal indentation
-            if len(line) - len(line.lstrip()) <= base_indent:
-                break
-            end += 1
-        
-        result.append('\n'.join(lines[start:end]))
-    
-    return result
-
 def get_file_content(file_path: Path) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
         file_content = f.read().strip()
