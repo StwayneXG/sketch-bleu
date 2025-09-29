@@ -240,7 +240,19 @@ def calc_weighted_ngram_match(tokenized_refs: List[str], tokenized_hyps: List[st
     tokenized_refs_with_weights = [tokenized_refs, make_weights(tokenized_refs, keywords)]
     tokenized_hyps_with_weights = [tokenized_hyps, make_weights(tokenized_hyps, keywords)]
     weighted_ngram_match_score = weighted_ngram_match.corpus_bleu([[tokenized_refs_with_weights]], [tokenized_hyps_with_weights])
-    
+    print("\n\nMy implementation")
+    print("tokenized_refs:")
+    print(tokenized_refs)
+
+    print("tokenized_hyps:")
+    print(tokenized_hyps)
+
+    print("tokenized_refs_with_weights:")
+    print(tokenized_refs_with_weights)
+
+    print("\ntokenized_hyps_with_weights:")
+    print(tokenized_hyps_with_weights)
+
     logging.debug(f"Time taken to calculate weighted ngram match: {(time.time() - start_time):.2f} seconds")
     return weighted_ngram_match_score
 
@@ -427,6 +439,83 @@ def calc_repobleu(
     assert reference_repo.exists(), f"reference_repo {reference_repo} does not exist"
     assert prediction_repo.exists(), f"prediction_repo {prediction_repo} does not exist"
 
+#########################################################
+#########################################################
+#########################################################
+#########################################################
+
+    reference_dirs = [reference_repo]
+    prediction_dirs = [prediction_repo]
+    assert len(reference_dirs) == len(
+        prediction_dirs
+    ), "Number of reference and prediction directories should be the same"
+    assert lang in AVAILABLE_LANGS, f"Language {lang} is not supported (yet). Available languages: {AVAILABLE_LANGS}"
+    assert len(weights) == 4, "weights should be a tuple of 4 floats (alpha, beta, gamma, theta)"
+    assert keywords_dir.exists(), f"keywords_dir {keywords_dir} does not exist"
+
+    # preprocess inputs
+    references = []
+    predictions = []
+    for reference_dir, prediction_dir in zip(reference_dirs, prediction_dirs):
+        assert reference_dir.exists(), f"reference_dir {reference_dir} does not exist"
+        assert prediction_dir.exists(), f"prediction_dir {prediction_dir} does not exist"
+        reference_files = get_file_list(reference_dir, ".py")
+        prediction_files = get_file_list(prediction_dir, ".py")
+
+        reference_source = stack_source_code(reference_files)
+        prediction_source = stack_source_code(prediction_files)
+
+        references.append(reference_source)
+        predictions.append(prediction_source)
+
+    # calculate ngram match (BLEU)
+    if tokenizer is None:
+        def tokenizer(s):
+            return s.split()
+
+    tokenized_hyps = [tokenizer(x) for x in predictions]    
+    tokenized_refs = [[tokenizer(x)] for x in references]
+
+    print("tokenized_refs:")
+    print(tokenized_refs)
+
+    print("tokenized_hyps:")
+    print(tokenized_hyps)
+    
+    ngram_match_score = bleu.corpus_bleu(tokenized_refs, tokenized_hyps)
+
+    # calculate weighted ngram match
+    with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
+        keywords = [x.strip() for x in f.readlines()]
+
+    def make_weights(reference_tokens, key_word_list):
+        return {token: 1 if token in key_word_list else 0.2 for token in reference_tokens}
+
+    tokenized_refs_with_weights = [
+        [[reference_tokens, make_weights(reference_tokens, keywords)] for reference_tokens in reference]
+        for reference in tokenized_refs
+    ]
+    tokenized_hyps_with_weights = [
+        [hypothesis_tokens, make_weights(hypothesis_tokens, keywords)] for hypothesis_tokens in tokenized_hyps
+    ]
+
+    print("tokenized_refs_with_weights:")
+    print(tokenized_refs_with_weights)
+
+    print("\ntokenized_hyps_with_weights:")
+    print(tokenized_hyps_with_weights)
+
+    weighted_ngram_match_score = weighted_ngram_match.corpus_bleu(
+        tokenized_refs_with_weights, tokenized_hyps_with_weights
+    )
+    print(f"\nweighted_ngram_match_score: {weighted_ngram_match_score}")
+
+###########################################################################
+###########################################################################
+###########################################################################
+###########################################################################
+###########################################################################
+
     # get the tree-sitter language for a given language
     tree_sitter_language = get_tree_sitter_language(lang)
 
@@ -453,11 +542,12 @@ def calc_repobleu(
     weighted_ngram_match_score = calc_weighted_ngram_match(tokenized_refs, tokenized_hyps, keywords_dir, lang)
 
     # 8. Calculate structure match
-    structure_match_score = calc_structure_match(reference_repo, prediction_repo, lang, tree_sitter_language)
+    structure_match_score = 1
+    # calc_structure_match(reference_repo, prediction_repo, lang, tree_sitter_language)
 
     # 9. Calculate dataflow match
-    dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
-    # dataflow_match_score = 1
+    # dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
+    dataflow_match_score = 1
 
     # 7. Calculate n gram matches
 
