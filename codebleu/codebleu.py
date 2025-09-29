@@ -429,6 +429,7 @@ def calc_repobleu(
     assert keywords_dir.exists(), f"keywords_dir {keywords_dir} does not exist"
     assert reference_repo.exists(), f"reference_repo {reference_repo} does not exist"
     assert prediction_repo.exists(), f"prediction_repo {prediction_repo} does not exist"
+    tree_sitter_language = get_tree_sitter_language(lang)
 
 ######################################################################
 ######################################################################
@@ -493,7 +494,7 @@ def calc_repobleu(
         hyps = hyp_functions[case]
         for i, ref in enumerate(refs):
             for j, hyp in enumerate(hyps):
-                df_value = 1
+                df_value = dataflow_match.corpus_dataflow_match([[ref]], [hyp], lang, tree_sitter_language=tree_sitter_language)
                 if df_value != 0:
                     data.append(df_value)
                     row.append(i)
