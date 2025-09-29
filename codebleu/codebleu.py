@@ -466,7 +466,9 @@ def calc_repobleu(
     print(f"length of ref_functions = {len(ref_functions)}")
     print(f"length of hyp_functions = {len(hyp_functions)}")
     results = []
-    print(f"Length for ref_functions = {len(ref_functions)}")
+    print(f"length for ref_functions[0] = {len(ref_functions[0])}")
+    print(f"length for hyp_functions[0] = {len(hyp_functions[0])}")
+
     for case in range(len(ref_functions)):
         data = []
         row = []
