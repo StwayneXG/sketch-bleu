@@ -430,6 +430,108 @@ def calc_repobleu(
     assert reference_repo.exists(), f"reference_repo {reference_repo} does not exist"
     assert prediction_repo.exists(), f"prediction_repo {prediction_repo} does not exist"
 
+######################################################################
+######################################################################
+######################################################################
+    reference_dirs = [reference_repo]
+    prediction_dirs = [prediction_repo]
+    # preprocess inputs
+    references = []
+    predictions = []
+    for reference_dir, prediction_dir in zip(reference_dirs, prediction_dirs):
+        assert reference_dir.exists(), f"reference_dir {reference_dir} does not exist"
+        assert prediction_dir.exists(), f"prediction_dir {prediction_dir} does not exist"
+        reference_files = get_file_list(reference_dir, ".py")
+        prediction_files = get_file_list(prediction_dir, ".py")
+
+        reference_source = stack_source_code(reference_files)
+        prediction_source = stack_source_code(prediction_files)
+
+        references.append(reference_source)
+        predictions.append(prediction_source)
+
+    # calculate ngram match (BLEU)
+    if tokenizer is None:
+
+        def tokenizer(s):
+            return s.split()
+
+    tokenized_hyps = [tokenizer(x) for x in predictions]
+    tokenized_refs = [[tokenizer(x)] for x in references]
+
+    ngram_match_score = bleu.corpus_bleu(tokenized_refs, tokenized_hyps)
+
+    # calculate weighted ngram match
+    with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
+        keywords = [x.strip() for x in f.readlines()]
+
+    def make_weights(reference_tokens, key_word_list):
+        return {token: 1 if token in key_word_list else 0.2 for token in reference_tokens}
+
+    tokenized_refs_with_weights = [
+        [[reference_tokens, make_weights(reference_tokens, keywords)] for reference_tokens in reference]
+        for reference in tokenized_refs
+    ]
+    tokenized_hyps_with_weights = [
+        [hypothesis_tokens, make_weights(hypothesis_tokens, keywords)] for hypothesis_tokens in tokenized_hyps
+    ]
+
+    weighted_ngram_match_score = weighted_ngram_match.corpus_bleu(
+        tokenized_refs_with_weights, tokenized_hyps_with_weights
+    )
+
+    # calculate dataflow match
+    ref_functions = [extract_functions(ref) for ref in references]
+    hyp_functions = [extract_functions(hyp) for hyp in predictions]
+    results = []
+    print(f"Length for ref_functions = {len(ref_functions)}")
+    for case in range(len(ref_functions)):
+        data = []
+        row = []
+        col = []
+        refs = ref_functions[case]
+        hyps = hyp_functions[case]
+        for i, ref in enumerate(refs):
+            for j, hyp in enumerate(hyps):
+                df_value = 1
+                if df_value != 0:
+                    data.append(df_value)
+                    row.append(i)
+                    col.append(j)
+        biadjacency_matrix = csr_matrix((data, (row, col)))
+        row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
+        dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+
+        def getBP(closest_ref_len, hyp_len):
+            if 2 * hyp_len > closest_ref_len:
+                return 1
+            # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
+            elif hyp_len == 0:
+                return 0
+            else:
+                # return math.exp(1 - closest_ref_len / hyp_len)
+                return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
+
+        bp = min(getBP(len(refs), len(hyps)), getBP(len(hyps), len(refs)))
+        print(f"refs:{refs}")
+        print(f"hyps:{hyps}")
+        print(f"Calulated bp between {len(refs)} and {len(hyps)}")
+        results.append(dataflow_match_score / min(len(refs), len(hyps)) * bp)
+    dataflow_match_score = sum(results) / len(results)
+
+    alpha, beta, gamma, theta = weights
+    return 1
+    # code_bleu_score = (
+    #     alpha * ngram_match_score
+    #     + beta * weighted_ngram_match_score
+    #     + gamma * syntax_match_score
+    #     + theta * (dataflow_match_score or 1)
+    # )
+
+######################################################################
+######################################################################
+######################################################################
+
     # get the tree-sitter language for a given language
     tree_sitter_language = get_tree_sitter_language(lang)
 
