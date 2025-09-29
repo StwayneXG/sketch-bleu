@@ -376,9 +376,6 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
         else:
             # return math.exp(1 - closest_ref_len / hyp_len)
             return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
-        
-    print(f"Calculating brevity penalty for {len(ref_functions)} and {len(hyp_functions)}")
-    print(f"Types: {type(ref_functions)} and {type(hyp_functions)}")
 
     bp = min(getBP(len(ref_functions), len(hyp_functions)), getBP(len(hyp_functions), len(ref_functions)))
     
@@ -386,8 +383,8 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     logging.debug(f"Number of hyp functions: {len(hyp_dfgs_normalized)}")
     logging.debug(f"Matrix shape: {biadjacency_matrix.shape}")
     logging.debug(f"Sum of assigned similarities: {dataflow_match_score}")
-    logging.debug(f"Length of ref_functions[0]: {len(ref_functions[0])}")
-    logging.debug(f"Length of hyp_functions[0]: {len(hyp_functions[0])}")
+    logging.debug(f"Length of ref_functions: {len(ref_functions)}")
+    logging.debug(f"Length of hyp_functions: {len(hyp_functions)}")
     logging.debug(f"BP value: {bp}")
 
     # Avoid division by zero
