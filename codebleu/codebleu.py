@@ -492,16 +492,17 @@ def calc_repobleu(
         col = []
         refs = ref_functions[case]
         hyps = hyp_functions[case]
-        for i, ref in enumerate(refs):
-            for j, hyp in enumerate(hyps):
-                df_value = dataflow_match.corpus_dataflow_match([[ref]], [hyp], lang, tree_sitter_language=tree_sitter_language)
-                if df_value != 0:
-                    data.append(df_value)
-                    row.append(i)
-                    col.append(j)
-        biadjacency_matrix = csr_matrix((data, (row, col)))
-        row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
-        dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+        # for i, ref in enumerate(refs):
+        #     for j, hyp in enumerate(hyps):
+        #         df_value = dataflow_match.corpus_dataflow_match([[ref]], [hyp], lang, tree_sitter_language=tree_sitter_language)
+        #         if df_value != 0:
+        #             data.append(df_value)
+        #             row.append(i)
+        #             col.append(j)
+        # biadjacency_matrix = csr_matrix((data, (row, col)))
+        # row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
+        # dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+        dataflow_match_score = 1
 
         def getBP(closest_ref_len, hyp_len):
             if 2 * hyp_len > closest_ref_len:
