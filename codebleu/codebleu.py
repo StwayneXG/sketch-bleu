@@ -346,6 +346,9 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
         
         return match_count / total_count
 
+    logging.debug("defined `compute_dataflow_similarity`")
+    logging.debug(f"Length of ref_dfgs_normalized: {len(ref_dfgs_normalized)}")
+    logging.debug(f"Length of hyp_dfgs_normalized: {len(hyp_dfgs_normalized)}")
     results = []
     # Build similarity matrix using pre-computed normalized DFGs
     data = []
@@ -354,6 +357,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     start_time_df_similarity = time.time()
     for i, ref_dfg in enumerate(ref_dfgs_normalized):
         for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
+            logging.debug(f"Computing dataflow similarity for ref_dfg index {i} and hyp_dfg index {j}")
             df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
             if df_value != 0:
                 data.append(df_value)
