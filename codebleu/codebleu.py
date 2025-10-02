@@ -457,8 +457,8 @@ def calc_repobleu(
     # structure_match_score = 1.0
 
     # 9. Calculate dataflow match
-    # dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
-    dataflow_match_score = 1.0
+    dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
+    # dataflow_match_score = 1.0
 
     # 7. Calculate n gram matches
 
