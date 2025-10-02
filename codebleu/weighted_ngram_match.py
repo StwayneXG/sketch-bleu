@@ -396,14 +396,14 @@ def brevity_penalty(closest_ref_len, hyp_len):
     :return: BLEU's brevity penalty.
     :rtype: float
     """
-    if hyp_len > closest_ref_len:
+    if 2 * hyp_len > closest_ref_len:
         return 1
     # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
     elif hyp_len == 0:
         return 0
     else:
-        return math.exp(1 - closest_ref_len / hyp_len)
-
+        # return math.exp(1 - closest_ref_len / hyp_len)
+        return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
 
 class SmoothingFunction:
     """
