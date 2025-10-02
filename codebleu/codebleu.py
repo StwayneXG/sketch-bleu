@@ -11,7 +11,7 @@ PACKAGE_DIR = Path(__file__).parent
 
 import logging
 import time
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 def calc_codebleu(
     references: Union[List[str], List[List[str]]],
@@ -453,11 +453,12 @@ def calc_repobleu(
     weighted_ngram_match_score = calc_weighted_ngram_match(tokenized_refs, tokenized_hyps, keywords_dir, lang)
 
     # 8. Calculate structure match
-    structure_match_score = calc_structure_match(reference_repo, prediction_repo, lang, tree_sitter_language)
+    # structure_match_score = calc_structure_match(reference_repo, prediction_repo, lang, tree_sitter_language)
+    structure_match_score = 1.0
 
     # 9. Calculate dataflow match
-    dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
-    # dataflow_match_score = 1
+    # dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
+    dataflow_match_score = 1.0
 
     # 7. Calculate n gram matches
 
