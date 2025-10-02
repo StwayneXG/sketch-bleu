@@ -351,6 +351,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     data = []
     row = []
     col = []
+    start_time_df_similarity = time.time()
     for i, ref_dfg in enumerate(ref_dfgs_normalized):
         for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
             df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
@@ -358,6 +359,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
                 data.append(df_value)
                 row.append(i)
                 col.append(j)
+    logging.debug(f"Time taken to compute dataflow similarity for normalized dfgs: {(time.time() - start_time_df_similarity):.2f} seconds")
     
     # Create sparse matrix with proper dimensions
     if len(data) > 0:
