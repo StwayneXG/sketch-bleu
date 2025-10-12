@@ -354,6 +354,8 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     data = []
     row = []
     col = []
+    logging.debug(f"Works fine till dfg similarity check")
+    return 1.0
     start_time_df_similarity = time.time()
     for i, ref_dfg in enumerate(ref_dfgs_normalized):
         for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
@@ -463,8 +465,8 @@ def calc_repobleu(
     # structure_match_score = 1.0
 
     # 9. Calculate dataflow match
-    # dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
-    dataflow_match_score = 1.0
+    dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
+    # dataflow_match_score = 1.0
 
     # 7. Calculate n gram matches
 
