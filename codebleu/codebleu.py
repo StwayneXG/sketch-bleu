@@ -225,3 +225,24 @@ def tokenize_repo_source_codes(reference_source: str, prediction_source: str, to
     logging.debug(f"Time taken to tokenize source codes: {(time.time() - start_time):.2f} seconds")
     return tokenized_refs, tokenized_hyps
 
+def calc_ngram_match(tokenized_refs: List[str], tokenized_hyps: List[str]) -> float:
+    start_time = time.time()
+    ngram_match_score = bleu.corpus_bleu([[tokenized_refs]], [tokenized_hyps])
+    logging.debug(f"Time taken to calculate ngram match: {(time.time() - start_time):.2f} seconds")
+    return ngram_match_score
+
+def calc_weighted_ngram_match(tokenized_refs: List[str], tokenized_hyps: List[str], keywords_dir: Path, lang: str) -> float:
+    start_time = time.time()
+    with open(keywords_dir / (lang + ".txt"), "r", encoding="utf-8") as f:
+        keywords = [x.strip() for x in f.readlines()]
+
+    def make_weights(reference_tokens, key_word_list):
+        return {token: 1 if token in key_word_list else 0.2 for token in reference_tokens}
+
+    tokenized_refs_with_weights = [tokenized_refs, make_weights(tokenized_refs, keywords)]
+    tokenized_hyps_with_weights = [tokenized_hyps, make_weights(tokenized_hyps, keywords)]
+    weighted_ngram_match_score = weighted_ngram_match.corpus_bleu([[tokenized_refs_with_weights]], [tokenized_hyps_with_weights])
+    
+    logging.debug(f"Time taken to calculate weighted ngram match: {(time.time() - start_time):.2f} seconds")
+    return weighted_ngram_match_score
+
