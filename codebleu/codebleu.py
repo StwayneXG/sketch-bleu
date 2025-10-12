@@ -354,11 +354,9 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     data = []
     row = []
     col = []
-    logging.debug(f"Works fine till dfg similarity check")
-    return 1.0
     start_time_df_similarity = time.time()
-    for i, ref_dfg in enumerate(ref_dfgs_normalized):
-        for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
+    for i, ref_dfg in enumerate(ref_dfgs_normalized[:10000]):
+        for j, hyp_dfg in enumerate(hyp_dfgs_normalized[:10000]):
             logging.debug(f"Computing dataflow similarity for ref_dfg index {i} and hyp_dfg index {j}")
             df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
             if df_value != 0:
