@@ -254,3 +254,199 @@ def calc_structure_match(reference_repo: Path, prediction_repo: Path, lang: str,
     logging.debug(f"Time taken to calculate structure match: {(time.time() - start_time):.2f} seconds")
     return structure_match_score
 
+def get_repo_functions(reference_sources: List[str], prediction_sources: List[str]) -> Tuple[List[str], List[str]]:
+    start_time = time.time()
+
+    ref_functions = []
+    for ref in reference_sources:
+        ref_functions += extract_functions(ref)
+
+
+    hyp_functions = []
+    for hyp in prediction_sources:
+        hyp_functions += extract_functions(hyp)
+
+    logging.debug(f"Extracted {len(ref_functions)} functions from reference sources.")
+    logging.debug(f"Extracted {len(hyp_functions)} functions from prediction sources.")
+    logging.debug(f"Time taken to extract functions: {(time.time() - start_time):.2f} seconds")
+    return ref_functions, hyp_functions
+
+def remove_repo_comments_and_docstrings(ref_functions: List[str], hyp_functions: List[str], lang: str) -> Tuple[List[str], List[str]]:
+    from parser import remove_comments_and_docstrings
+    start_time = time.time()
+
+    ref_functions_wo_comments_docstrings = []
+    hyp_functions_wo_comments_docstrings = []
+    for func in ref_functions:
+        ref_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+
+    for func in hyp_functions:
+        hyp_functions_wo_comments_docstrings.append(remove_comments_and_docstrings(func, lang))
+    
+    logging.debug(f"Time taken to remove comments and docstrings: {(time.time() - start_time):.2f} seconds")
+    return ref_functions_wo_comments_docstrings, hyp_functions_wo_comments_docstrings
+
+def get_repos_dfg(ref_functions: List[str], hyp_functions: List[str], lang: str, tree_sitter_language) -> List:
+    from dataflow_match import get_data_flow, dfg_function
+    from tree_sitter import Parser
+    start_time = time.time()
+
+    parser = Parser()
+    parser.language = tree_sitter_language
+    parser = [parser, dfg_function[lang]]
+    ref_dfgs = [get_data_flow(func, parser) for func in ref_functions]
+    hyp_dfgs = [get_data_flow(func, parser) for func in hyp_functions]
+
+    logging.debug(f"Time taken to get DFGs: {(time.time() - start_time):.2f} seconds")
+    return ref_dfgs, hyp_dfgs
+
+def normalize_repo_dfg(ref_dfgs: List, hyp_dfgs: List) -> Tuple[List, List]:
+    from dataflow_match import normalize_dataflow
+    start_time = time.time()
+
+    ref_dfgs_normalized = [normalize_dataflow(dfg) for dfg in ref_dfgs]
+    hyp_dfgs_normalized = [normalize_dataflow(dfg) for dfg in hyp_dfgs]
+
+    logging.debug(f"Time taken to normalize DFGs: {(time.time() - start_time):.2f} seconds")
+    return ref_dfgs_normalized, hyp_dfgs_normalized
+
+def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[str], lang: str, tree_sitter_language) -> float:
+    start_time = time.time()
+    process = psutil.Process(os.getpid())
+    memory_info = process.memory_info()
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+
+    ref_functions, hyp_functions = get_repo_functions(reference_sources, prediction_sources)
+    memory_info = process.memory_info()
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    ref_functions_wo_comments_docstrings, hyp_functions_wo_comments_docstrings = remove_repo_comments_and_docstrings(ref_functions, hyp_functions, lang)
+    memory_info = process.memory_info()
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    ref_dfgs, hyp_dfgs = get_repos_dfg(ref_functions_wo_comments_docstrings, hyp_functions_wo_comments_docstrings, lang, tree_sitter_language)
+    memory_info = process.memory_info()
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    ref_dfgs_normalized, hyp_dfgs_normalized = normalize_repo_dfg(ref_dfgs, hyp_dfgs)
+    memory_info = process.memory_info()
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+
+    # 12. Calculate dataflow match
+    def compute_dataflow_similarity(ref_dfg_normalized, hyp_dfg_normalized):
+        """
+        Compute dataflow similarity between two normalized DFGs.
+        This replicates the logic from corpus_dataflow_match for a single pair.
+        """
+        ref_len = len(ref_dfg_normalized)
+        hyp_len = len(hyp_dfg_normalized)
+        
+        # Handle edge case: both empty DFGs should have similarity 1.0
+        if ref_len == 0 and hyp_len == 0:
+            return 1.0
+        
+        # If reference is empty but hypothesis is not, similarity is 0
+        if ref_len == 0:
+            return 0.0
+        
+        match_count = 0
+        total_count = ref_len
+        
+        # Create a copy of hyp_dfg to avoid modifying the original
+        hyp_dfg_copy = hyp_dfg_normalized.copy()
+        
+        for dataflow in ref_dfg_normalized:
+            if dataflow in hyp_dfg_copy:
+                match_count += 1
+                hyp_dfg_copy.remove(dataflow)  # Remove to avoid double counting
+        
+        return match_count / total_count
+
+    logging.debug("defined `compute_dataflow_similarity`")
+    logging.debug(f"Length of ref_dfgs_normalized: {len(ref_dfgs_normalized)}")
+    logging.debug(f"Length of hyp_dfgs_normalized: {len(hyp_dfgs_normalized)}")
+    results = []
+    # Build similarity matrix using pre-computed normalized DFGs
+    # data = []
+    # row = []
+    # col = []
+    start_time_df_similarity = time.time()
+    SIMILARITY_THRESHOLD = 0.0
+    from pympler import asizeof
+    rows = len(ref_dfgs_normalized)
+    cols = len(hyp_dfgs_normalized)
+    import numpy as np
+    matrix = np.zeros((rows, cols), dtype=np.float32)
+
+    for i, ref_dfg in enumerate(ref_dfgs_normalized):
+        for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
+            matrix[i, j] = compute_dataflow_similarity(ref_dfg, hyp_dfg)
+            if i % 1000 == 0 and j % 1000 == 0:
+                logging.debug(f"Computing dataflow similarity for ref_dfg index {i} and hyp_dfg index {j}")
+                memory_info = process.memory_info()
+                logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+                # logging.debug(f"Data = {asizeof.asizeof(data) / 1024**2} MB")
+                # logging.debug(f"Row = {asizeof.asizeof(row) / 1024**2} MB")
+                # logging.debug(f"Col = {asizeof.asizeof(col) / 1024**2} MB")
+
+            # df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
+            # if df_value > SIMILARITY_THRESHOLD:
+            #     data.append(df_value)
+            #     row.append(i)
+            #     col.append(j)
+    logging.debug(f"Time taken to compute dataflow similarity for normalized dfgs: {(time.time() - start_time_df_similarity):.2f} seconds")
+    memory_info = process.memory_info()
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+
+    del ref_dfgs
+    del hyp_dfgs
+    memory_info = process.memory_info()
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    len_ref_dfgs_normalized = len(ref_dfgs_normalized)
+    len_hyp_dfgs_normalized = len(hyp_dfgs_normalized)
+    del ref_dfgs_normalized
+    del hyp_dfgs_normalized
+    memory_info = process.memory_info()
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    # return 1.0
+
+    
+    # Create sparse matrix with proper dimensions
+    if rows > 0 and cols > 0:
+        # biadjacency_matrix = csr_matrix((data, (row, col)))
+        # row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
+        row_ind, col_ind = linear_sum_assignment(matrix, maximize=True)
+        dataflow_match_score = matrix[row_ind, col_ind].sum()
+    else:
+        dataflow_match_score = 0
+    
+    def getBP(closest_ref_len, hyp_len):
+        if 2 * hyp_len > closest_ref_len:
+            return 1
+        # If hypothesis is empty, brevity penalty = 0 should result in BLEU = 0.0
+        elif hyp_len == 0:
+            return 0
+        else:
+            # return math.exp(1 - closest_ref_len / hyp_len)
+            return 1 / (1 + math.log(closest_ref_len / (2 * hyp_len)))
+
+    bp = min(getBP(len(ref_functions), len(hyp_functions)), getBP(len(hyp_functions), len(ref_functions)))
+    
+    logging.debug(f"Number of ref functions: {len_ref_dfgs_normalized}")
+    logging.debug(f"Number of hyp functions: {len_hyp_dfgs_normalized}")
+    logging.debug(f"Matrix shape: {matrix.shape}")
+    logging.debug(f"Sum of assigned similarities: {dataflow_match_score}")
+    logging.debug(f"Length of ref_functions: {len(ref_functions)}")
+    logging.debug(f"Length of hyp_functions: {len(hyp_functions)}")
+    logging.debug(f"BP value: {bp}")
+
+    # Avoid division by zero
+    if len_ref_dfgs_normalized > 0 and len_hyp_dfgs_normalized > 0:
+        # Normalize by the number of functions being compared
+        normalized_score = dataflow_match_score / max(len_ref_dfgs_normalized, len_hyp_dfgs_normalized)
+        results.append(normalized_score * bp)
+    else:
+        results.append(0)
+    
+    dataflow_match_score = sum(results) / len(results) if results else 0
+
+    logging.debug(f"Time taken to calculate dataflow match: {(time.time() - start_time):.2f} seconds")
+    return float(dataflow_match_score)
+
