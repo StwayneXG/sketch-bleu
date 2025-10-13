@@ -366,25 +366,32 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
                 row.append(i)
                 col.append(j)
     logging.debug(f"Time taken to compute dataflow similarity for normalized dfgs: {(time.time() - start_time_df_similarity):.2f} seconds")
+    import psutil
+    import os
+
+    process = psutil.Process(os.getpid())
+    memory_info = process.memory_info()
+
+    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+
+    del ref_dfgs
+    del hyp_dfgs
+    memory_info = process.memory_info()
+    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    len_ref_dfgs_normalized = len(ref_dfgs_normalized)
+    len_hyp_dfgs_normalized = len(hyp_dfgs_normalized)
+    del ref_dfgs_normalized
+    del hyp_dfgs_normalized
+    memory_info = process.memory_info()
+    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    return 1.0
+
     
-    import networkx as nx
-
-    # Create bipartite graph directly from the (row, col, data) edges
+    # Create sparse matrix with proper dimensions
     if len(data) > 0:
-        G = nx.Graph()
-
-        # Add edges between reference and hypothesis nodes with weight = similarity
-        for i, j, w in zip(row, col, data):
-            # Use distinct labels for ref and hyp nodes to keep them separate
-            G.add_edge(f"ref_{i}", f"hyp_{j}", weight=w)
-
-        # Compute the maximum weight matching
-        matching = nx.max_weight_matching(G, maxcardinality=False)
-
-        # Sum the weights of the chosen edges (these are the optimal pairs)
-        dataflow_match_score = sum(G[u][v]["weight"] for u, v in matching)
-
-        logging.debug(f"Number of matched pairs: {len(matching)}")
+        biadjacency_matrix = csr_matrix((data, (row, col)))
+        row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
+        dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
     else:
         dataflow_match_score = 0
     
@@ -400,8 +407,8 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
 
     bp = min(getBP(len(ref_functions), len(hyp_functions)), getBP(len(hyp_functions), len(ref_functions)))
     
-    logging.debug(f"Number of ref functions: {len(ref_dfgs_normalized)}")
-    logging.debug(f"Number of hyp functions: {len(hyp_dfgs_normalized)}")
+    logging.debug(f"Number of ref functions: {len_ref_dfgs_normalized}")
+    logging.debug(f"Number of hyp functions: {len_hyp_dfgs_normalized}")
     logging.debug(f"Matrix shape: {biadjacency_matrix.shape}")
     logging.debug(f"Sum of assigned similarities: {dataflow_match_score}")
     logging.debug(f"Length of ref_functions: {len(ref_functions)}")
@@ -411,7 +418,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     # Avoid division by zero
     if len(ref_dfgs_normalized) > 0 and len(hyp_dfgs_normalized) > 0:
         # Normalize by the number of functions being compared
-        normalized_score = dataflow_match_score / max(len(ref_dfgs_normalized), len(hyp_dfgs_normalized))
+        normalized_score = dataflow_match_score / max(len_ref_dfgs_normalized, len_hyp_dfgs_normalized)
         results.append(normalized_score * bp)
     else:
         results.append(0)
