@@ -367,12 +367,24 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
                 col.append(j)
     logging.debug(f"Time taken to compute dataflow similarity for normalized dfgs: {(time.time() - start_time_df_similarity):.2f} seconds")
     
-    # Create sparse matrix with proper dimensions
+    import networkx as nx
+
+    # Create bipartite graph directly from the (row, col, data) edges
     if len(data) > 0:
-        biadjacency_matrix = csr_matrix((data, (row, col)))
-        logging.debug("Biadjacency matrix successfully created.")
-        row_ind, col_ind = linear_sum_assignment(biadjacency_matrix, maximize=True)
-        dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+        G = nx.Graph()
+
+        # Add edges between reference and hypothesis nodes with weight = similarity
+        for i, j, w in zip(row, col, data):
+            # Use distinct labels for ref and hyp nodes to keep them separate
+            G.add_edge(f"ref_{i}", f"hyp_{j}", weight=w)
+
+        # Compute the maximum weight matching
+        matching = nx.max_weight_matching(G, maxcardinality=False)
+
+        # Sum the weights of the chosen edges (these are the optimal pairs)
+        dataflow_match_score = sum(G[u][v]["weight"] for u, v in matching)
+
+        logging.debug(f"Number of matched pairs: {len(matching)}")
     else:
         dataflow_match_score = 0
     
