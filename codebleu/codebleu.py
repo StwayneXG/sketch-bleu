@@ -314,20 +314,20 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     start_time = time.time()
     process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
-    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
 
     ref_functions, hyp_functions = get_repo_functions(reference_sources, prediction_sources)
     memory_info = process.memory_info()
-    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
     ref_functions_wo_comments_docstrings, hyp_functions_wo_comments_docstrings = remove_repo_comments_and_docstrings(ref_functions, hyp_functions, lang)
     memory_info = process.memory_info()
-    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
     ref_dfgs, hyp_dfgs = get_repos_dfg(ref_functions_wo_comments_docstrings, hyp_functions_wo_comments_docstrings, lang, tree_sitter_language)
     memory_info = process.memory_info()
-    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
     ref_dfgs_normalized, hyp_dfgs_normalized = normalize_repo_dfg(ref_dfgs, hyp_dfgs)
     memory_info = process.memory_info()
-    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
 
     # 12. Calculate dataflow match
     def compute_dataflow_similarity(ref_dfg_normalized, hyp_dfg_normalized):
@@ -374,7 +374,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
             if i % 1000 == 0 and j % 1000 == 0:
                 logging.debug(f"Computing dataflow similarity for ref_dfg index {i} and hyp_dfg index {j}")
                 memory_info = process.memory_info()
-                print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+                logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
 
             df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
             if df_value > SIMILARITY_THRESHOLD:
@@ -383,18 +383,18 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
                 col.append(j)
     logging.debug(f"Time taken to compute dataflow similarity for normalized dfgs: {(time.time() - start_time_df_similarity):.2f} seconds")
     memory_info = process.memory_info()
-    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
 
     del ref_dfgs
     del hyp_dfgs
     memory_info = process.memory_info()
-    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
     len_ref_dfgs_normalized = len(ref_dfgs_normalized)
     len_hyp_dfgs_normalized = len(hyp_dfgs_normalized)
     del ref_dfgs_normalized
     del hyp_dfgs_normalized
     memory_info = process.memory_info()
-    print(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
+    logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
     return 1.0
 
     
