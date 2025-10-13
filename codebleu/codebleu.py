@@ -364,27 +364,33 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     logging.debug(f"Length of hyp_dfgs_normalized: {len(hyp_dfgs_normalized)}")
     results = []
     # Build similarity matrix using pre-computed normalized DFGs
-    data = []
-    row = []
-    col = []
+    # data = []
+    # row = []
+    # col = []
     start_time_df_similarity = time.time()
-    SIMILARITY_THRESHOLD = 0.3
+    SIMILARITY_THRESHOLD = 0.0
     from pympler import asizeof
+    rows = len(ref_dfgs_normalized)
+    cols = len(hyp_dfgs_normalized)
+    import numpy as np
+    matrix = np.zeros((rows, cols), dtype=np.float32)
+
     for i, ref_dfg in enumerate(ref_dfgs_normalized[:20001]):
         for j, hyp_dfg in enumerate(hyp_dfgs_normalized[:20001]):
             if i % 1000 == 0 and j % 1000 == 0:
                 logging.debug(f"Computing dataflow similarity for ref_dfg index {i} and hyp_dfg index {j}")
                 memory_info = process.memory_info()
                 logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
-                logging.debug(f"Data = {asizeof.asizeof(data) / 1024**2} MB")
-                logging.debug(f"Row = {asizeof.asizeof(row) / 1024**2} MB")
-                logging.debug(f"Col = {asizeof.asizeof(col) / 1024**2} MB")
+                # logging.debug(f"Data = {asizeof.asizeof(data) / 1024**2} MB")
+                # logging.debug(f"Row = {asizeof.asizeof(row) / 1024**2} MB")
+                # logging.debug(f"Col = {asizeof.asizeof(col) / 1024**2} MB")
 
-            df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
-            if df_value > SIMILARITY_THRESHOLD:
-                data.append(df_value)
-                row.append(i)
-                col.append(j)
+            matrix[i, j] = compute_dataflow_similarity(ref_dfg, hyp_dfg)
+            # df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
+            # if df_value > SIMILARITY_THRESHOLD:
+            #     data.append(df_value)
+            #     row.append(i)
+            #     col.append(j)
     logging.debug(f"Time taken to compute dataflow similarity for normalized dfgs: {(time.time() - start_time_df_similarity):.2f} seconds")
     memory_info = process.memory_info()
     logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
@@ -399,14 +405,15 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     del hyp_dfgs_normalized
     memory_info = process.memory_info()
     logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
-    return 1.0
+    # return 1.0
 
     
     # Create sparse matrix with proper dimensions
-    if len(data) > 0:
-        biadjacency_matrix = csr_matrix((data, (row, col)))
-        row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
-        dataflow_match_score = biadjacency_matrix[row_ind, col_ind].sum()
+    if rows > 0 and cols > 0:
+        # biadjacency_matrix = csr_matrix((data, (row, col)))
+        # row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
+        row_ind, col_ind = linear_sum_assignment(matrix.toarray(), maximize=True)
+        dataflow_match_score = matrix[row_ind, col_ind].sum()
     else:
         dataflow_match_score = 0
     
@@ -424,7 +431,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     
     logging.debug(f"Number of ref functions: {len_ref_dfgs_normalized}")
     logging.debug(f"Number of hyp functions: {len_hyp_dfgs_normalized}")
-    logging.debug(f"Matrix shape: {biadjacency_matrix.shape}")
+    logging.debug(f"Matrix shape: {matrix.shape}")
     logging.debug(f"Sum of assigned similarities: {dataflow_match_score}")
     logging.debug(f"Length of ref_functions: {len(ref_functions)}")
     logging.debug(f"Length of hyp_functions: {len(hyp_functions)}")
