@@ -385,7 +385,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
                 # logging.debug(f"Row = {asizeof.asizeof(row) / 1024**2} MB")
                 # logging.debug(f"Col = {asizeof.asizeof(col) / 1024**2} MB")
 
-            matrix[i, j] = 1.0 # compute_dataflow_similarity(ref_dfg, hyp_dfg)
+            matrix[i, j] = compute_dataflow_similarity(ref_dfg, hyp_dfg)
             # df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
             # if df_value > SIMILARITY_THRESHOLD:
             #     data.append(df_value)
