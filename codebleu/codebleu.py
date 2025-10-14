@@ -400,7 +400,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     if rows > 0 and cols > 0:
         # biadjacency_matrix = csr_matrix((data, (row, col)))
         # row_ind, col_ind = linear_sum_assignment(biadjacency_matrix.toarray(), maximize=True)
-        row_ind, col_ind = linear_sum_assignment(matrix.toarray(), maximize=True)
+        row_ind, col_ind = linear_sum_assignment(matrix, maximize=True)
         dataflow_match_score = matrix[row_ind, col_ind].sum()
     else:
         dataflow_match_score = 0
