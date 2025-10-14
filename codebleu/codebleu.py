@@ -330,23 +330,26 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
 
     # 12. Calculate dataflow match
-    from collections import Counter
-
-    def compute_dataflow_similarity(ref_dfg, hyp_dfg):
-        # hyp_counter: Counter built once for the hyp DFG (precompute)
-        # ref_dfg: list for which we build a Counter once per ref or precompute too
-        hyp_counter = Counter(hyp_dfg)
+    def compute_dataflow_similarity_no_copy(ref_dfg, hyp_dfg):
         ref_len = len(ref_dfg)
+        hyp_len = len(hyp_dfg)
+        if ref_len == 0 and hyp_len == 0:
+            return 1.0
         if ref_len == 0:
-            # if both empty -> 1.0, else 0
-            return 1.0 if sum(hyp_counter.values()) == 0 else 0.0
+            return 0.0
 
-        ref_counter = Counter(ref_dfg)
-        match_count = 0
-        for token, cnt in ref_counter.items():
-            match_count += min(cnt, hyp_counter.get(token, 0))
-        return match_count / ref_len
+        used = [False] * hyp_len      # one small list per call (hyp_len)
+        match = 0
 
+        for ref_flow in ref_dfg:
+            for j, hyp_flow in enumerate(hyp_dfg):
+                if not used[j] and ref_flow == hyp_flow:
+                    used[j] = True
+                    match += 1
+                    break
+
+        return match / ref_len
+    
     logging.debug("defined `compute_dataflow_similarity`")
     logging.debug(f"Length of ref_dfgs_normalized: {len(ref_dfgs_normalized)}")
     logging.debug(f"Length of hyp_dfgs_normalized: {len(hyp_dfgs_normalized)}")
