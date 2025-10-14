@@ -330,26 +330,35 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
 
     # 12. Calculate dataflow match
-    def compute_dataflow_similarity(ref_dfg, hyp_dfg):
-        ref_len = len(ref_dfg)
-        hyp_len = len(hyp_dfg)
+    def compute_dataflow_similarity(ref_dfg_normalized, hyp_dfg_normalized):
+        """
+        Compute dataflow similarity between two normalized DFGs.
+        This replicates the logic from corpus_dataflow_match for a single pair.
+        """
+        ref_len = len(ref_dfg_normalized)
+        hyp_len = len(hyp_dfg_normalized)
+        
+        # Handle edge case: both empty DFGs should have similarity 1.0
         if ref_len == 0 and hyp_len == 0:
             return 1.0
+        
+        # If reference is empty but hypothesis is not, similarity is 0
         if ref_len == 0:
             return 0.0
+        
+        match_count = 0
+        total_count = ref_len
+        
+        # Create a copy of hyp_dfg to avoid modifying the original
+        hyp_dfg_copy = hyp_dfg_normalized.copy()
+        
+        for dataflow in ref_dfg_normalized:
+            if dataflow in hyp_dfg_copy:
+                match_count += 1
+                hyp_dfg_copy.remove(dataflow)  # Remove to avoid double counting
+        
+        return match_count / total_count
 
-        used = [False] * hyp_len      # one small list per call (hyp_len)
-        match = 0
-
-        for ref_flow in ref_dfg:
-            for j, hyp_flow in enumerate(hyp_dfg):
-                if not used[j] and ref_flow == hyp_flow:
-                    used[j] = True
-                    match += 1
-                    break
-
-        return match / ref_len
-    
     logging.debug("defined `compute_dataflow_similarity`")
     logging.debug(f"Length of ref_dfgs_normalized: {len(ref_dfgs_normalized)}")
     logging.debug(f"Length of hyp_dfgs_normalized: {len(hyp_dfgs_normalized)}")
@@ -376,7 +385,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
                 # logging.debug(f"Row = {asizeof.asizeof(row) / 1024**2} MB")
                 # logging.debug(f"Col = {asizeof.asizeof(col) / 1024**2} MB")
 
-            matrix[i, j] = compute_dataflow_similarity(ref_dfg, hyp_dfg)
+            matrix[i, j] = 1.0 # compute_dataflow_similarity(ref_dfg, hyp_dfg)
             # df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
             # if df_value > SIMILARITY_THRESHOLD:
             #     data.append(df_value)
@@ -429,7 +438,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     logging.debug(f"BP value: {bp}")
 
     # Avoid division by zero
-    if len(ref_dfgs_normalized) > 0 and len(hyp_dfgs_normalized) > 0:
+    if len_ref_dfgs_normalized > 0 and len_hyp_dfgs_normalized > 0:
         # Normalize by the number of functions being compared
         normalized_score = dataflow_match_score / max(len_ref_dfgs_normalized, len_hyp_dfgs_normalized)
         results.append(normalized_score * bp)
