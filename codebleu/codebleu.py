@@ -330,7 +330,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
 
     # 12. Calculate dataflow match
-    def compute_dataflow_similarity_no_copy(ref_dfg, hyp_dfg):
+    def compute_dataflow_similarity(ref_dfg, hyp_dfg):
         ref_len = len(ref_dfg)
         hyp_len = len(hyp_dfg)
         if ref_len == 0 and hyp_len == 0:
