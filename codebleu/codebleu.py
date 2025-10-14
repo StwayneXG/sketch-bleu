@@ -330,34 +330,22 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     logging.debug(f"Memory used: {memory_info.rss / 1024 ** 2:.2f} MB")
 
     # 12. Calculate dataflow match
-    def compute_dataflow_similarity(ref_dfg_normalized, hyp_dfg_normalized):
-        """
-        Compute dataflow similarity between two normalized DFGs.
-        This replicates the logic from corpus_dataflow_match for a single pair.
-        """
-        ref_len = len(ref_dfg_normalized)
-        hyp_len = len(hyp_dfg_normalized)
-        
-        # Handle edge case: both empty DFGs should have similarity 1.0
-        if ref_len == 0 and hyp_len == 0:
-            return 1.0
-        
-        # If reference is empty but hypothesis is not, similarity is 0
+    from collections import Counter
+
+    def compute_dataflow_similarity(ref_dfg, hyp_dfg):
+        # hyp_counter: Counter built once for the hyp DFG (precompute)
+        # ref_dfg: list for which we build a Counter once per ref or precompute too
+        hyp_counter = Counter(hyp_dfg)
+        ref_len = len(ref_dfg)
         if ref_len == 0:
-            return 0.0
-        
+            # if both empty -> 1.0, else 0
+            return 1.0 if sum(hyp_counter.values()) == 0 else 0.0
+
+        ref_counter = Counter(ref_dfg)
         match_count = 0
-        total_count = ref_len
-        
-        # Create a copy of hyp_dfg to avoid modifying the original
-        hyp_dfg_copy = hyp_dfg_normalized.copy()
-        
-        for dataflow in ref_dfg_normalized:
-            if dataflow in hyp_dfg_copy:
-                match_count += 1
-                hyp_dfg_copy.remove(dataflow)  # Remove to avoid double counting
-        
-        return match_count / total_count
+        for token, cnt in ref_counter.items():
+            match_count += min(cnt, hyp_counter.get(token, 0))
+        return match_count / ref_len
 
     logging.debug("defined `compute_dataflow_similarity`")
     logging.debug(f"Length of ref_dfgs_normalized: {len(ref_dfgs_normalized)}")
@@ -375,8 +363,8 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     import numpy as np
     matrix = np.zeros((rows, cols), dtype=np.float32)
 
-    for i, ref_dfg in enumerate(ref_dfgs_normalized[:20001]):
-        for j, hyp_dfg in enumerate(hyp_dfgs_normalized[:20001]):
+    for i, ref_dfg in enumerate(ref_dfgs_normalized):
+        for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
             if i % 1000 == 0 and j % 1000 == 0:
                 logging.debug(f"Computing dataflow similarity for ref_dfg index {i} and hyp_dfg index {j}")
                 memory_info = process.memory_info()
