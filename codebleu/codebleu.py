@@ -175,7 +175,7 @@ def extract_functions(source):
     return result
 
 def get_file_content(file_path: Path) -> str:
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
         file_content = f.read().strip()
     return file_content
 
