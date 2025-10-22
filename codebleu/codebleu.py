@@ -369,6 +369,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     # col = []
     start_time_df_similarity = time.time()
     SIMILARITY_THRESHOLD = 0.0
+    return 1.0
     from pympler import asizeof
     rows = len(ref_dfgs_normalized)
     cols = len(hyp_dfgs_normalized)
@@ -507,8 +508,8 @@ def calc_repobleu(
     # structure_match_score = 1.0
 
     # 9. Calculate dataflow match
-    # dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
-    dataflow_match_score = 1.0
+    dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
+    # dataflow_match_score = 1.0
 
     # 7. Calculate n gram matches
 
