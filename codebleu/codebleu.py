@@ -369,7 +369,6 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
     # col = []
     start_time_df_similarity = time.time()
     SIMILARITY_THRESHOLD = 0.0
-    return 1.0
     from pympler import asizeof
     rows = len(ref_dfgs_normalized)
     cols = len(hyp_dfgs_normalized)
