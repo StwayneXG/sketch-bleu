@@ -4,8 +4,8 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from . import bleu, dataflow_match, syntax_match, weighted_ngram_match
-from .utils import AVAILABLE_LANGS, get_tree_sitter_language
+import bleu, dataflow_match, syntax_match, weighted_ngram_match
+from utils import AVAILABLE_LANGS, get_tree_sitter_language
 import psutil
 import os
 

@@ -4,7 +4,7 @@
 from typing import Union
 from tree_sitter import Parser, Node
 
-from .parser import (
+from parser import (
     DFG_csharp,
     DFG_go,
     DFG_java,
@@ -14,7 +14,7 @@ from .parser import (
     DFG_ruby,
     remove_comments_and_docstrings,
 )
-from .utils import get_tree_sitter_language
+from utils import get_tree_sitter_language
 
 dfg_function = {
     "python": DFG_python,

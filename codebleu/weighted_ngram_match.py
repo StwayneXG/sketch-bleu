@@ -15,7 +15,7 @@
 import math
 from collections import Counter
 
-from .utils import ngrams
+from utils import ngrams
 
 
 def sentence_bleu(
