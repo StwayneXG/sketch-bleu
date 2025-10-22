@@ -281,14 +281,23 @@ def repo_structure_match(reference_repo, candidate_repo, lang, tree_sitter_langu
     
     cand_sexps = get_all_sub_trees(candidate_tree)
     ref_sexps = get_all_sub_trees(reference_tree)
+    print(f'Candidate sub-trees: {len(cand_sexps)}')
+    print(f'Reference sub-trees: {len(ref_sexps)}')
+    print('All sub-trees gotten. Computing matches...')
 
-    total_count = 0
+    # Convert to set for O(1) lookup instead of O(n)
+    cand_sexps_set = set(cand_sexps)
+    
     match_count = 0
-    for sub_tree in ref_sexps:
-        if sub_tree in cand_sexps:
+    for i, sub_tree in enumerate(ref_sexps):
+        if sub_tree in cand_sexps_set:  # O(1) lookup
             match_count += 1
+        
+        # Progress indicator for debugging
+        if (i + 1) % 1000 == 0:
+            print(f'Processed {i + 1}/{len(ref_sexps)} sub-trees...')
 
-    total_count += len(ref_sexps)
-    score = match_count / total_count
+    total_count = len(ref_sexps)
+    score = match_count / total_count if total_count > 0 else 0
+    print(f'Match count: {match_count}/{total_count} = {score:.4f}')
     return score
-
