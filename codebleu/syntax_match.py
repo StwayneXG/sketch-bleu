@@ -281,8 +281,7 @@ def repo_structure_match(reference_repo, candidate_repo, lang, tree_sitter_langu
     
     cand_sexps = get_all_sub_trees(candidate_tree)
     ref_sexps = get_all_sub_trees(reference_tree)
-    print('All sub-trees in candidate repo gotten.')
-    return 1
+
     total_count = 0
     match_count = 0
     for sub_tree in ref_sexps:

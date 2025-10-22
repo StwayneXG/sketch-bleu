@@ -505,6 +505,7 @@ def calc_repobleu(
     # 8. Calculate structure match
     structure_match_score = calc_structure_match(reference_repo, prediction_repo, lang, tree_sitter_language)
     # structure_match_score = 1.0
+    print(f"Structure match score calculated")
 
     # 9. Calculate dataflow match
     # dataflow_match_score = calc_dataflow_match(reference_sources, prediction_sources, lang, tree_sitter_language)
