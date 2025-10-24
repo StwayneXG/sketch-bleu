@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 from typing import List, Tuple
 
-from codebleu import calc_codebleu, calc_repobleu
+from . import calc_codebleu, calc_repobleu
 
 PACKAGE_DIR = Path(__file__).parent
 

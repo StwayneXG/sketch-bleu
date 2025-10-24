@@ -4,8 +4,8 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-import bleu, dataflow_match, syntax_match, weighted_ngram_match
-from utils import AVAILABLE_LANGS, get_tree_sitter_language
+from . import bleu, dataflow_match, syntax_match, weighted_ngram_match
+from .utils import AVAILABLE_LANGS, get_tree_sitter_language
 import psutil
 import os
 
@@ -272,7 +272,7 @@ def get_repo_functions(reference_sources: List[str], prediction_sources: List[st
     return ref_functions, hyp_functions
 
 def remove_repo_comments_and_docstrings(ref_functions: List[str], hyp_functions: List[str], lang: str) -> Tuple[List[str], List[str]]:
-    from parser import remove_comments_and_docstrings
+    from .parser import remove_comments_and_docstrings
     start_time = time.time()
 
     ref_functions_wo_comments_docstrings = []
@@ -287,7 +287,7 @@ def remove_repo_comments_and_docstrings(ref_functions: List[str], hyp_functions:
     return ref_functions_wo_comments_docstrings, hyp_functions_wo_comments_docstrings
 
 def get_repos_dfg(ref_functions: List[str], hyp_functions: List[str], lang: str, tree_sitter_language) -> List:
-    from dataflow_match import get_data_flow, dfg_function
+    from .dataflow_match import get_data_flow, dfg_function
     from tree_sitter import Parser
     start_time = time.time()
 
@@ -301,7 +301,7 @@ def get_repos_dfg(ref_functions: List[str], hyp_functions: List[str], lang: str,
     return ref_dfgs, hyp_dfgs
 
 def normalize_repo_dfg(ref_dfgs: List, hyp_dfgs: List) -> Tuple[List, List]:
-    from dataflow_match import normalize_dataflow
+    from .dataflow_match import normalize_dataflow
     start_time = time.time()
 
     ref_dfgs_normalized = [normalize_dataflow(dfg) for dfg in ref_dfgs]
