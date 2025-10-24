@@ -13,7 +13,7 @@ PACKAGE_DIR = Path(__file__).parent
 
 import logging
 import time
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 def calc_codebleu(
     references: Union[List[str], List[List[str]]],
@@ -377,6 +377,7 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
 
     for i, ref_dfg in enumerate(ref_dfgs_normalized):
         for j, hyp_dfg in enumerate(hyp_dfgs_normalized):
+            matrix[i, j] = compute_dataflow_similarity(ref_dfg, hyp_dfg)
             if i % 1000 == 0 and j % 1000 == 0:
                 logging.debug(f"Computing dataflow similarity for ref_dfg index {i} and hyp_dfg index {j}")
                 memory_info = process.memory_info()
@@ -385,7 +386,6 @@ def calc_dataflow_match(reference_sources: List[str], prediction_sources: List[s
                 # logging.debug(f"Row = {asizeof.asizeof(row) / 1024**2} MB")
                 # logging.debug(f"Col = {asizeof.asizeof(col) / 1024**2} MB")
 
-            matrix[i, j] = compute_dataflow_similarity(ref_dfg, hyp_dfg)
             # df_value = compute_dataflow_similarity(ref_dfg, hyp_dfg)
             # if df_value > SIMILARITY_THRESHOLD:
             #     data.append(df_value)
