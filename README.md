@@ -1,8 +1,64 @@
-# CodeBLEU
-[![Publish](https://github.com/k4black/codebleu/actions/workflows/publish.yml/badge.svg)](https://github.com/k4black/codebleu/actions/workflows/publish.yml)
-[![Test](https://github.com/k4black/codebleu/actions/workflows/test.yml/badge.svg?event=push)](https://github.com/k4black/codebleu/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/k4black/codebleu/branch/main/graph/badge.svg?token=60BIFPWRCE)](https://codecov.io/gh/k4black/codebleu)
-[![PyPI version](https://badge.fury.io/py/codebleu.svg)](https://badge.fury.io/py/codebleu)
+# sketch-BLEU
+
+sketch-BLEU is a repository-level code similarity metric, derived from
+[k4black/codebleu](https://github.com/k4black/codebleu) at commit
+[`b0edb62`](https://github.com/k4black/codebleu/commit/b0edb622f6a52fe9d1edc407be5061d3e1462a7f)
+— the upstream `main` tip, 16 commits after release `0.7.1`.
+
+CodeBLEU scores a pair of code *files*. sketch-BLEU scores a pair of code
+*repositories*, for evaluating generated code where the unit of output is a
+whole project rather than a single translated function. Reaching that meant
+changing the metric itself, not just wrapping it:
+
+- **`calc_repobleu`** — a new entry point that walks two repository trees,
+  stacks their sources, and combines four component scores under CodeBLEU's
+  usual alpha/beta/gamma/theta weighting.
+- **Repository-aware structure match** — replaces per-file AST comparison with
+  a single tree spanning directory layout *and* per-file tree-sitter ASTs, so
+  where a file sits counts toward the score. Directory entries are sorted, so
+  the result does not depend on filesystem order.
+- **Cross-function dataflow match** — functions are extracted from both repos
+  and matched one-to-one by data-flow-graph similarity using the Hungarian
+  algorithm, rather than assuming a pre-existing alignment.
+- **Precision instead of recall** in the weighted n-gram component, measuring
+  how much of the generated code is justified by the reference rather than how
+  much of the reference is covered.
+- **Unigram-only n-gram weights** `(1, 0, 0, 0)`, because higher-order n-grams
+  over a stacked repository largely measure incidental file ordering.
+- **A half-length brevity penalty** — `1 / (1 + log(r / 2h))`, flat once the
+  hypothesis reaches half the reference length. The standard `exp(1 - r/h)`
+  collapses towards zero for generated repositories and swamps every other
+  component.
+
+`calc_codebleu` is unchanged and still scores file pairs exactly as upstream
+does. Note that upstream's test suite asserts the original CodeBLEU values, so
+the tests covering the changed components fail here by design.
+
+## Usage
+
+```python
+from codebleu import calc_repobleu
+from pathlib import Path
+
+calc_repobleu(Path("reference_repo"), Path("generated_repo"), "python")
+# {'repo_bleu': 0.74, 'ngram_match_score': 0.64, 'weighted_ngram_match_score': 0.82,
+#  'structure_match_score': 0.88, 'dataflow_match_score': 0.63}
+```
+
+or from the command line:
+
+```bash
+python -m codebleu --ref reference_repo --hyp generated_repo --lang python
+```
+
+**Status: research code.** It is not published to PyPI and has no CI of its own.
+The commit history was reorganised from the original development history into
+self-contained commits; the original is preserved under the `legacy-history` tag.
+
+Everything below the line is upstream's documentation of CodeBLEU, kept as-is
+and describing `calc_codebleu`.
+
+---
 
 
 This repository contains an unofficial `CodeBLEU` implementation that supports `Linux`, `MacOS` (incl. M-series) and `Windows`. It is available through `PyPI` and the `evaluate` library.
